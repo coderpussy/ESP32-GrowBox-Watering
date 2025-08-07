@@ -1,0 +1,355 @@
+@import "darkmode.css";
+@import "calendar.css";
+@import "plug.css";
+@import "gear.css";
+@import "scheduler.css";
+
+/* Common CSS style definition */
+html {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+body {
+    height: 100vh;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-font-smoothing: subpixel-antialiased;
+    -moz-osx-font-smoothing: subpixel-antialiased;
+}
+
+* {
+    box-sizing: border-box;
+  }
+
+h1 {
+    font-size: 1.5em;
+    color: #0fc0c0;
+    text-align: center;
+}
+
+hr {
+    height: 1px;
+    background-color: #666;
+    border: none;
+}
+
+p {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /*margin-bottom: 1.4em;*/
+}
+
+table {
+    text-align: left; 
+    vertical-align: middle; 
+    margin: 0 auto;
+}
+
+/* Automatic control CSS style definition */
+input[type=button] {
+    /*margin: 0 .25em;*/
+    padding: .4em .8em;
+    font-size: 1em;
+    color: #fff;
+    background: #1b8181;
+    border: none;
+    border-radius: .3em;
+    text-align: center;
+    cursor: pointer;
+}
+
+input[type=text],
+input[type=number],
+input[type=datetime-local],
+select {
+    width: 170px;
+    padding: 6px;
+    /*margin: 8px 0;*/
+    display: block;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+.topnav {
+    display: flex;
+    position: fixed;
+    top: 0;
+    width: 100%;
+    overflow: hidden;
+    padding: 1em;
+    background-color: #0A1128;
+    z-index: 1;
+}
+.topnav .box {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.topnav .box1 > div {
+    margin-right: auto;
+    font-size: 1.4em;
+    font-weight: 600;
+    color: #0fc0c0;
+    white-space: nowrap;
+}
+.topnav .box2 {
+    display: flex;
+    align-items: center;
+    justify-content: right;
+}
+.topnav .box2 > div:nth-child(1) {
+    margin-right: 1.5em;
+}
+.topnav .box2 > div:nth-child(2) {
+    margin-right: 1.5em;
+}
+.topnav .box2 > div:nth-child(3) {
+    margin-right: 1.5em;
+}
+.slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 75%;
+    height: 20px;
+    border-radius: 10px;
+    background: #d3d3d3;
+    outline: none;
+    opacity: 0.7;
+    -webkit-transition: .2s;
+    transition: opacity .2s;
+}
+
+.slider:hover {
+    opacity: 1;
+}
+
+.slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #0fc0c0;
+    cursor: pointer;
+}
+
+.slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #0fc0c0;
+    cursor: pointer;
+}
+
+/* Manual control buttons CSS style definition */
+.control-button {
+    width: 4em;
+    height: 4em;
+    background: #4f4f4f;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.control-top,
+.control-middle,
+.control-bottom,
+.control-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.control-top {
+    margin-bottom: 1.5em;
+}
+
+.control-middle .left,
+.control-middle .right,
+.control-middle .center {
+    display: inline-block;
+}
+.control-middle .center {
+    margin-left: 1.5em;
+    margin-right: 1.5em;
+}
+
+.control-bottom {
+    margin-top: 1.5em;
+}
+
+/* Form elements common CSS styles */
+fieldset {
+    border: 1px solid;
+    border-color: #999;
+    border-radius: 5px;
+}
+
+.control-input {
+    display: flex;
+    align-items: center;
+    flex: 1;
+}
+.control-input .dish-position,
+.control-input .saved-positions,
+.control-input .manual-control {
+    width: 100%;
+    display: flex;
+    align-items: center;
+}
+.control-input .dish-position > div:first-child,
+.control-input .dish-position > div:last-child {
+    flex: 1;
+}
+.control-input .saved-positions {
+    justify-content: space-between;
+}
+.control-input .saved-positions select {
+    width: 50%;
+}
+.control-input .saved-positions button {
+    padding: 12px 10px;
+}
+.control-input .manual-control {
+    justify-content: space-between;
+}
+
+/* Formcontrols default CSS style definition */
+div.formcontrols {
+    border-radius: 5px;
+    padding: 50px 20px 20px 20px;
+}
+
+/* Overlay default CSS style definition */
+#overlay-calendar, #overlay-webserial, #overlay-settings {
+    display: grid;
+    place-items: center;
+    position: fixed;
+    width: 100vw;
+    height: 100vh;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    z-index: -1;
+
+    transition: 0.6s;
+    opacity: 0;
+    visibility: hidden;
+}
+#overlay-calendar.active, #overlay-webserial.active, #overlay-settings.active {
+    opacity: 1;
+    visibility: visible;
+    z-index: 2;
+    overflow-y: auto;
+}
+
+#overlay-calendar .close, #overlay-webserial .close, #overlay-settings .close {
+    position: absolute;
+    right: 36px;
+    top: 24px;
+    width: 22px;
+    height: 22px;
+    opacity: 0.8;
+    cursor: pointer;
+}
+#overlay-calendar .close:hover, #overlay-webserial .close:hover, #overlay-settings .close:hover {
+    opacity: 1;
+}
+#overlay-calendar .close:before, #overlay-calendar .close:after,
+#overlay-webserial .close:before, #overlay-webserial .close:after,
+#overlay-settings .close:before, #overlay-settings .close:after {
+    position: absolute;
+    left: 15px;
+    content: ' ';
+    height: 22px;
+    width: 4px;
+    background-color: #fff;
+}
+#overlay-calendar .close:before, #overlay-webserial .close:before, #overlay-settings .close:before {
+    transform: rotate(45deg);
+}
+#overlay-calendar .close:after, #overlay-webserial .close:after, #overlay-settings .close:after {
+    transform: rotate(-45deg);
+}
+#overlay-calendar .formcontrols, #overlay-webserial .formcontrols, #overlay-settings .formcontrols {
+    padding: 20px;
+}
+
+
+.auto-switch,
+.valve-switch,
+.pump-switch {
+  display: inline-block;
+  height: 34px;
+  position: relative;
+  width: 60px;
+}
+
+.auto-switch input,
+.valve-switch input,
+.pump-switch input {
+  display:none;
+}
+
+.auto-slider,
+.valve-slider,
+.pump-slider {
+  background-color: #ccc;
+  bottom: 0;
+  cursor: pointer;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+  transition: .4s;
+}
+
+.auto-slider:before,
+.valve-slider:before,
+.pump-slider:before {
+  background-color: #fff;
+  bottom: 4px;
+  content: "";
+  height: 26px;
+  left: 4px;
+  position: absolute;
+  transition: .4s;
+  width: 26px;
+}
+
+
+input#auto_switch:checked + .auto-slider,
+input#valve_switch_1:checked + .valve-slider,
+input#valve_switch_2:checked + .valve-slider,
+input#valve_switch_3:checked + .valve-slider,
+input#pump_switch:checked + .pump-slider {
+  background-color: #0fc0c0;
+}
+
+input#auto_switch:checked + .auto-slider:before,
+input#valve_switch_1:checked + .valve-slider:before,
+input#valve_switch_2:checked + .valve-slider:before,
+input#valve_switch_3:checked + .valve-slider:before,
+input#pump_switch:checked + .pump-slider:before {
+  transform: translateX(26px);
+}
+
+.auto-slider.round,
+.valve-slider.round,
+.pump-slider.round {
+  border-radius: 34px;
+}
+
+.auto-slider.round:before,
+.valve-slider.round:before,
+.pump-slider.round:before {
+  border-radius: 50%;
+}

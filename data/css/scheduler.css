@@ -1,0 +1,51 @@
+/* Task Scheduler common styles */
+.job-form {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.job-list {
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 10px;
+    margin-bottom: 20px;
+}
+
+.job {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+.job:not(:last-child) {
+    margin-bottom: 10px;
+}
+.job button {
+    width: 70px;
+    background-color: #287fa7;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+}
+.job button.active {
+    background-color: #28a745;
+}
+.job p:not(:last-child) span {
+    padding-left: 3px;
+}
+.job .itemedit:hover {
+    cursor: not-allowed;
+}
+.job .itemdelete {
+    cursor: pointer;
+}
+.save-job-list {
+    display: flex;
+    flex-direction: row;
+    justify-content: end;
+}

@@ -1,0 +1,32 @@
+.gear {
+    width: 16px;
+    height: 16px;
+    background: white;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+  }
+  
+  .gear-inner {
+    width: 8px;
+    height: 8px;
+    background: #14213d;
+    border-radius: 50%;
+  }
+  
+  .bar {
+    width: 22px;
+    height: 5px;
+    background: white;
+    border-radius: 2px;
+    position: absolute;
+    z-index: -1;
+  }
+  .bar:nth-child(2) {
+    transform: rotate(60deg);
+  }
+  .bar:nth-child(3) {
+    transform: rotate(120deg);
+  }

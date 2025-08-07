@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Growbox Watering</title>
+        <meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="icon" type="image/x-icon" href="favicon.ico">
+        <link rel="stylesheet" type="text/css" href="css/index.css">
+    </head>
+
+    <body>
+        <input id="dark-mode" class="dark-mode-checkbox visually-hidden" type="checkbox" />
+
+        <div class="topnav">
+            <div class="box box1">
+                <div>Growbox Watering</div>
+            </div>
+            <div class="box box2">
+                <div class="calendar-dates toggle-overlay calendar"></div>
+                <div class="power-plug toggle-overlay webserial"></div>
+                <div class="gear toggle-overlay settings">
+                    <div class="bar"></div>
+                    <div class="bar"></div>
+                    <div class="bar"></div>
+                    <div class="gear-inner"></div>
+                </div>
+                <div>
+                    <label class="dark-mode-label" for="dark-mode">
+                        <span class="toggle">
+                            <span class="circle"></span>
+                        </span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="theme-container">
+
+            <table>
+                <tr>
+                    <td style="text-align: center;">
+                        <span>Automatic Watering:</span><br /><br />
+                        <span id="mode"></span>
+                        <label class="auto-switch" for="auto_switch">
+                            <input type="checkbox" id="auto_switch" />
+                            <div class="auto-slider round"></div>
+                        </label>
+                    </td>
+                </tr>
+            </table>
+
+            <br />
+
+            <table>
+                <tr><td>Moisture Sensor 1:</td><td><span id="sensor_1"></span> &percnt;</td></tr>
+                <tr><td>Moisture Sensor 2:</td><td><span id="sensor_2"></span> &percnt;</td></tr>
+                <tr><td>Moisture Sensor 3:</td><td><span id="sensor_3"></span> &percnt;</td></tr>
+            </table>
+
+            <br />
+
+            <table>
+                <tr>
+                    <td>
+                        <table><tr>
+                            <td style="text-align: center;">
+                                <span>Magnetic Valve 1:</span><br /><br />
+                                <span id="valve_1"></span>
+                                <label class="valve-switch" for="valve_switch_1">
+                                    <input type="checkbox" id="valve_switch_1" />
+                                    <div class="valve-slider round"></div>
+                                </label>
+                            </td>
+                        </tr></table>
+                    </td>
+                    <td>
+                        <table><tr>
+                            <td style="text-align: center;">
+                                <span>Magnetic Valve 2:</span><br /><br />
+                                <span id="valve_2"></span>
+                                <label class="valve-switch" for="valve_switch_2">
+                                    <input type="checkbox" id="valve_switch_2" />
+                                    <div class="valve-slider round"></div>
+                                </label>
+                            </td>
+                        </tr></table>
+                    </td>
+                    <td>
+                        <table><tr>
+                            <td style="text-align: center;">
+                                <span>Magnetic Valve 3:</span><br /><br />
+                                <span id="valve_3"></span>
+                                <label class="valve-switch" for="valve_switch_3">
+                                    <input type="checkbox" id="valve_switch_3" />
+                                    <div class="valve-slider round"></div>
+                                </label>
+                            </td>
+                        </tr></table>
+                    </td>
+                </tr>
+            </table>
+
+            <br />
+
+            <table>
+                <tr>
+                    <td style="text-align: center;">
+                        <span>Water Pump:</span><br /><br />
+                        <span id="pump_1"></span>
+                        <label class="pump-switch" for="pump_switch">
+                            <input type="checkbox" id="pump_switch" />
+                            <div class="pump-slider round"></div>
+                        </label>
+                    </td>
+                </tr>
+            </table>
+
+            <br />
+
+            <table>
+                <tr>
+                    <td style="text-align: left;">
+                        <span>Runs:</span>
+                        <span><span id="pumpRunTime"></span> sec.</span>
+                    </td>
+                    <td>
+                        <span>Soil Flow Rate:</span>
+                        <span><span id="soilFlowVolume"></span> ltr.</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="2" style="padding-top: 10px; text-align: center;">
+                        <input id="resetCounter" type="button" class="button" value="Reset Counter">
+                    </td>
+                </tr>
+            </table>
+
+            <!-- Modal overlay boxes -->
+            <div id="overlay-calendar">
+                <span class="close toggle-overlay calendar"></span>
+                <div class="content">
+                    <h1>Job Scheduler</h1>
+                    <div class="formcontrols">
+                        <div class="job-form">
+                            <input type="text" id="job-name" placeholder="Enter job name...">
+                            <select id="job-select">
+                                <option value="watering">Watering</option>
+                                <option value="middle">Middle Priority</option>
+                                <option value="low">Less Priority</option>
+                            </select>
+                            <select id="plant-select">
+                                <option value="all-plants">All plants</option>
+                                <option value="plant-1">Plant 1</option>
+                                <option value="plant-2">Plant 2</option>
+                                <option value="plant-3">Plant 3</option>
+                            </select>
+                            <input type="number" id="job-duration" min="2" max="120" placeholder="e.g. 90" style="width: 70px;" required />
+                            <span> sec.</span><span class="validity"></span>
+                            <input type="datetime-local" id="starttime">
+                            <input id="everyday" type="checkbox" /><span>all days</span>
+                            <input id="add-job" type="button" class="button" value="Add Job" />
+                        </div>
+                        <div class="job-list" id="job-list">
+                            <!-- Tasks will be added here dynamically -->
+                        </div>
+                        <div class="save-job-list">
+                            <input id="save-jobs" type="button" class="button" value="Save Jobs" />
+                        </div>
+                    </div>
+                    <style>
+                        input#job-duration + span::after {
+                            font-weight: bold;
+                            padding-left: 5px;
+                        }
+                        input#job-duration:invalid + span::after {
+                            content: "✖";
+                            color: red;
+                        }
+
+                        input#job-duration:valid + span::after {
+                            content: "✓";
+                            color: green;
+                        }
+                    </style>
+                </div>
+            </div>
+
+            <div id="overlay-webserial">
+                <span class="close toggle-overlay webserial"></span>
+                <div class="content">
+                    <div class="formcontrols">
+                        <!--<iframe width="auto" height="400" src="/webserial"></iframe>-->
+                    </div>
+                </div>
+            </div>
+
+            <div id="overlay-settings">
+                <span class="close toggle-overlay settings"></span>
+                <div class="content">
+                    <h1>Settings</h1>
+                    <div class="formcontrols">
+                        <table>
+                            <tr><td>Use Webserial:</td><td><input type="checkbox" id="use_webserial"></td></tr>
+                            <tr><td>Use Soil Flow Sensor:</td><td><input type="checkbox" id="use_flowsensor"></td></tr>
+                            <tr><td>Use Soil Moisture Sensor:</td><td><input type="checkbox" id="use_moisturesensor"></td></tr>
+                        </table>
+                        <p>
+                            <input type="button" class="button toggle-overlay settings" value="Back"> 
+                            <input id="savesettings" type="button" class="button" value="Set"> 
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        <script src="js/index.js"></script>
+        <script src="js/scheduler.js"></script>
+    </body>
+</html>
