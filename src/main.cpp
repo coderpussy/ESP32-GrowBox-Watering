@@ -28,6 +28,8 @@
 #include <time.h>
 #include "config.h"
 
+#include <vector> // Für dynamisches Array
+
 // Get the number of elements in an array 
 #define ARRAY_LEN(array) (sizeof(array)/sizeof(array[0]))
 
@@ -115,6 +117,7 @@ struct jobStruct {
 // Initialize empty joblist structure
 // e.g. /*{1,false,"name","job","plant",90,"starttime",false},
 jobStruct joblist[] = {};
+std::vector<jobStruct> joblistVec; // Dynamisches Array für Jobs
 
 // Create AsyncWebServer object on port 80
 AsyncWebServer server(80);
@@ -192,6 +195,28 @@ void recvMsg(uint8_t *data, size_t len){
         d += char(data[i]);
     }
     WebSerial.println(d);
+}
+
+// Prints the content of a file to the Serial
+void printFile(const char *filename) {
+  // Open file for reading
+  File file = LittleFS.open(filename);
+
+  if (!file) {
+    Serial.println(F("Failed to read file"));
+    return;
+  }
+
+  // Extract each characters by one by one
+  while (file.available()) {
+    Serial.print(F((char)file.read()));
+    WebSerial.print(F((char)file.read()));
+  }
+  Serial.println();
+  WebSerial.println();
+
+  // Close the file
+  file.close();
 }
 
 // Loads the configuration from a file
@@ -282,50 +307,69 @@ void saveConfiguration(const char* configfile) {
     file.close();
 }
 
+int countJsonObjectsInFile(const char* filename) {
+    File file = LittleFS.open(filename, "r");
+    if (!file) return 0;
+    int count = 0;
+    while (file.available()) {
+        char c = file.read();
+        if (c == '{') count++;
+    }
+    file.close();
+    return count;
+}
+
 // Loads the job schedules from a file
-void loadJobs(const char* jobsfile) {
-    if (LittleFS.exists(jobsfile)) {
-        // Open file for reading
-        File file = LittleFS.open(jobsfile, "r");
+void loadJobsDynamic(const char* jobsfile) {
+    int jobCount = countJsonObjectsInFile(jobsfile);
 
-        // Allocate a temporary JsonDocument
-        // Don't forget to change the capacity to match your requirements.
-        // Use arduinojson.org/v6/assistant to compute the capacity.
-        const uint8_t size = JSON_OBJECT_SIZE(10);
-        StaticJsonDocument<size> doc;
+    if (jobCount == 0) {
+        Serial.println(F("No jobs found or file error"));
+        return;
+    }
 
-        // Deserialize the JSON document
-        DeserializationError error = deserializeJson(doc, file);
+    // Passe die Felderzahl ggf. an deine Struktur an!
+    const size_t capacity = JSON_ARRAY_SIZE(jobCount) + jobCount * JSON_OBJECT_SIZE(8);
+    //StaticJsonDocument<2048> doc;
+    DynamicJsonDocument doc(capacity); // Use DynamicJsonDocument for runtime capacity
 
-        // Close the file
-        file.close();
+    File file = LittleFS.open(jobsfile, "r");
+    DeserializationError error = deserializeJson(doc, file);
+    file.close();
 
-        if (error) {
-            Serial.println(F("Failed to read job schedules file, using default job schedules"));
-            WebSerial.print(F("Failed to read job schedules file, using default job schedules\n"));
-        } else {
-            Serial.println(F("Successfully read job schedules file, using saved job schedules"));
-            WebSerial.print(F("Successfully read job schedules file, using saved job schedules\n"));
+    if (error) {
+        Serial.println(F("Failed to read job schedules file, using default job schedules"));
+        Serial.println(error.c_str());
+        WebSerial.print(F("Failed to read job schedules file, using default job schedules\n"));
+        WebSerial.println(error.c_str());
+        return;
+    } else {
+        Serial.println(F("Successfully read job schedules file, using saved job schedules"));
+        WebSerial.print(F("Successfully read job schedules file, using saved job schedules\n"));
 
-            /*
-            float tmp = 0;
+        // Annahme: Die Datei enthält ein JSON-Array auf oberster Ebene
+        JsonArray arr = doc.as<JsonArray>();
+        joblistVec.clear();
 
-            // Copy values from the JsonDocument to the Config
-            tmp = doc["Astra_Az"];
-            if ((tmp >= 90) && (tmp <= 270)) Astra_Az = tmp;
+        for (JsonObject obj : arr) {
+            jobStruct job;
+            job.id = obj["id"] | 0;
+            job.active = obj["active"] | false;
+            strlcpy(job.name, obj["name"] | "", sizeof(job.name));
+            strlcpy(job.job, obj["job"] | "", sizeof(job.job));
+            strlcpy(job.plant, obj["plant"] | "", sizeof(job.plant));
+            job.duration = obj["duration"] | 0;
+            strlcpy(job.starttime, obj["starttime"] | "", sizeof(job.starttime));
+            job.everyday = obj["everyday"] | false;
+            joblistVec.push_back(job);
+        }
 
-            tmp = doc["Astra_El"];
-            if ((tmp >= 10) && (tmp <= 50)) Astra_El = tmp;
+        //Serial.printf("Loaded %d jobs\n", joblistVec.size());
+        jobStruct joblist[jobCount];
 
-            tmp = doc["El_Offset"];
-            if (abs(tmp) <= 90) El_Offset = tmp;
-
-            tmp = doc["Az_Offset"];
-            if (abs(tmp) <= 90) Az_Offset = tmp;
-
-            tmp = doc["motorSpeed"];
-            if ((tmp >= 500) && (tmp < 1024)) motorSpeed = trunc(tmp);
-            */
+        int count = std::min((int)joblistVec.size(), jobCount);
+        for (int i = 0; i < count; ++i) {
+            joblist[i] = joblistVec[i];
         }
     }
 }
@@ -852,28 +896,6 @@ void syncTime() {
     tzset();
 
     lastNTPUpdate = millis(); // Record the time of the last sync
-}
-
-// Prints the content of a file to the Serial
-void printFile(const char *filename) {
-  // Open file for reading
-  File file = LittleFS.open(filename);
-
-  if (!file) {
-    Serial.println(F("Failed to read file"));
-    return;
-  }
-
-  // Extract each characters by one by one
-  while (file.available()) {
-    Serial.print(F((char)file.read()));
-    WebSerial.print(F((char)file.read()));
-  }
-  Serial.println();
-  WebSerial.println();
-
-  // Close the file
-  file.close();
 }
 
 void setup(void) {
