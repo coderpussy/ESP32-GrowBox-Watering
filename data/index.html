@@ -51,13 +51,15 @@
 
             <br />
 
-            <table>
-                <tr><td>Moisture Sensor 1:</td><td><span id="sensor_1"></span> &percnt;</td></tr>
-                <tr><td>Moisture Sensor 2:</td><td><span id="sensor_2"></span> &percnt;</td></tr>
-                <tr><td>Moisture Sensor 3:</td><td><span id="sensor_3"></span> &percnt;</td></tr>
-            </table>
+            <div id="moistureSensorsWrapper">
+                <table>
+                    <tr><td>Moisture Sensor 1:</td><td><span id="sensor_1"></span> &percnt;</td></tr>
+                    <tr><td>Moisture Sensor 2:</td><td><span id="sensor_2"></span> &percnt;</td></tr>
+                    <tr><td>Moisture Sensor 3:</td><td><span id="sensor_3"></span> &percnt;</td></tr>
+                </table>
 
-            <br />
+                <br />
+            </div>
 
             <table>
                 <tr>
@@ -124,8 +126,10 @@
                         <span><span id="pumpRunTime"></span> sec.</span>
                     </td>
                     <td>
-                        <span>Soil Flow Rate:</span>
-                        <span><span id="soilFlowVolume"></span> ltr.</span>
+                        <div id="soilFlowVolumeWrapper">
+                            <span>Soil Flow Rate:</span>
+                            <span><span id="soilFlowVolume"></span> ltr.</span>
+                        </div>
                     </td>
                 </tr>
                 <tr>
@@ -145,11 +149,8 @@
                             <input type="text" id="job-name" placeholder="Enter job name...">
                             <select id="job-select">
                                 <option value="watering">Watering</option>
-                                <option value="middle">Middle Priority</option>
-                                <option value="low">Less Priority</option>
                             </select>
                             <select id="plant-select">
-                                <option value="all-plants">All plants</option>
                                 <option value="plant-1">Plant 1</option>
                                 <option value="plant-2">Plant 2</option>
                                 <option value="plant-3">Plant 3</option>
@@ -167,21 +168,6 @@
                             <input id="save-jobs" type="button" class="button" value="Save Jobs" />
                         </div>
                     </div>
-                    <style>
-                        input#job-duration + span::after {
-                            font-weight: bold;
-                            padding-left: 5px;
-                        }
-                        input#job-duration:invalid + span::after {
-                            content: "✖";
-                            color: red;
-                        }
-
-                        input#job-duration:valid + span::after {
-                            content: "✓";
-                            color: green;
-                        }
-                    </style>
                 </div>
             </div>
 
@@ -213,7 +199,7 @@
             </div>
 
         </div>
-        <script src="js/index.js"></script>
         <script src="js/scheduler.js"></script>
+        <script src="js/index.js"></script>
     </body>
 </html>

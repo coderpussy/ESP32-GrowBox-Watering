@@ -1,1 +1,1 @@
-{"use_webserial": false,"use_flowsensor": false,"use_moisturesensor": false}
+{"use_webserial": true,"use_flowsensor": true,"use_moisturesensor": false}

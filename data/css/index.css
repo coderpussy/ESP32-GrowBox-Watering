@@ -112,6 +112,7 @@ select {
 .topnav .box2 > div:nth-child(3) {
     margin-right: 1.5em;
 }
+/*
 .slider {
     -webkit-appearance: none;
     appearance: none;
@@ -145,10 +146,10 @@ select {
     border-radius: 50%;
     background: #0fc0c0;
     cursor: pointer;
-}
+}*/
 
 /* Manual control buttons CSS style definition */
-.control-button {
+/*.control-button {
     width: 4em;
     height: 4em;
     background: #4f4f4f;
@@ -181,7 +182,7 @@ select {
 
 .control-bottom {
     margin-top: 1.5em;
-}
+}*/
 
 /* Form elements common CSS styles */
 fieldset {
@@ -195,7 +196,7 @@ fieldset {
     align-items: center;
     flex: 1;
 }
-.control-input .dish-position,
+/*.control-input .dish-position,
 .control-input .saved-positions,
 .control-input .manual-control {
     width: 100%;
@@ -217,7 +218,7 @@ fieldset {
 }
 .control-input .manual-control {
     justify-content: space-between;
-}
+}*/
 
 /* Formcontrols default CSS style definition */
 div.formcontrols {

@@ -65,6 +65,38 @@ function addJob() {
     everydayInput.checked = false;
 }
 
+function setJobList(data) {
+    console.log(data);
+    
+    // Check if data is an array
+    if (!Array.isArray(data)) {
+        console.error("Invalid job list data received:", data);
+        return;
+    }
+    
+    // Clear existing job list
+    jobList.innerHTML = "";
+
+    data.forEach(job => {
+        const jobItem = document.createElement("div");
+        jobItem.classList.add("job");
+        jobItem.innerHTML = `
+            <button class="activate">${job.active ? "Active" : "Activate"}</button>
+            <p>Name:<span class="itemjobname">${job.name}</span></p>
+            <p>Job:<span class="itemjobselect">${job.job}</span></p>
+            <p>Plant:<span class="itemplantselect">${job.plant}</span></p>
+            <p>Duration:<span class="itemjobduration">${job.duration}</span><span>sec.</span></p>
+            <p>Start:<span class="itemstarttime">${job.starttime}</span></p>
+            <p>Every Day:<span class="itemeveryday">${job.everyday}</span></p>
+            <p>
+                <span class="itemedit" title="Edit Job">&#9998;</span>&nbsp;
+                <span class="itemdelete" title="Delete Job">&#128465;</span>
+            </p>
+        `;
+        jobList.appendChild(jobItem);
+    });
+}
+
 async function saveJobs() {
     const collection = jobList.children;
     //let tempjobs = '';
@@ -82,7 +114,6 @@ async function saveJobs() {
 
         active = active === "Active" ? true : false;
 
-        //tempjobs += '{"id":'+id+',"active":'+active+',"name":"'+name+'","job":"'+job+'","plant":"'+plant+'","duration":'+duration+',"starttime":"'+starttime+'","everyday":'+everyday+'},';
         console.log(JSON.stringify({"action":"addjobtolist","id":id,"active":active,"name":name,"job":job,"plant":plant,"duration":duration,"starttime":starttime,"everyday":everyday}));
         
         websocket.send(JSON.stringify({"action":"addjobtolist","id":id,"active":active,"name":name,"job":job,"plant":plant,"duration":duration,"starttime":starttime,"everyday":everyday}));
@@ -90,16 +121,6 @@ async function saveJobs() {
     }
 
     websocket.send(JSON.stringify({"action":"savejoblist"}));
-
-    //tempjobs = tempjobs.substring(0, tempjobs.length - 1);
-    //tempjobs = '{"action":"savejobs","joblist":['+tempjobs+']}';
-    
-    //jobJSON = JSON.stringify(tempjobs);
-    //console.log(JSON.stringify(tempjobs));
-    //console.log(tempjobs);
-
-    //websocket.send(JSON.stringify(tempjobs));
-    //websocket.send(tempjobs);
 }
 
 function sleep(ms) {

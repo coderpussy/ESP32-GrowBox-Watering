@@ -12,11 +12,11 @@
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-// ESP32 Grow Irrigation System
+// ESP32 Growbox Watering System
 // Controls water pump and water valve units for 3 plants in a grow tent
 
 // History
-// Version 0.9 pre2, 18.07.2025, coderpussy
+// Version 0.9 pre3, 14.08.2025, coderpussy
 #include <Arduino.h>
 #include <WiFi.h>
 #include <AsyncTCP.h>
@@ -30,15 +30,6 @@
 
 #include <vector> // Für dynamisches Array
 
-// Get the number of elements in an array 
-#define ARRAY_LEN(array) (sizeof(array)/sizeof(array[0]))
-
-// Time that the daily task runs in 24 hour format
-//const int taskHour = 16;   // Hour example in 24 hour format: 16 = 4 PM
-//const int taskMinute = 5;  // 5 minutes
-
-// Store the day when the task last ran to ensure it only runs once per day
-//int lastRunDay = -1;
 
 // NTP sync options
 unsigned long lastNTPUpdate = 0; // Timestamp for the last NTP sync
@@ -103,6 +94,9 @@ String action;
 unsigned long lastTime = 0;  
 unsigned long timerDelay = 1000;
 
+// Initialize settings with default values
+Settings settings;
+
 // Joblist structure
 struct jobStruct {
     int id;
@@ -114,10 +108,24 @@ struct jobStruct {
     char starttime[25];
     bool everyday;
 };
-// Initialize empty joblist structure
-// e.g. /*{1,false,"name","job","plant",90,"starttime",false},
-jobStruct joblist[] = {};
+// Dynamic array for jobs
 std::vector<jobStruct> joblistVec; // Dynamisches Array für Jobs
+
+// Job date/time structure
+struct jobDateTime {
+    int year;
+    int month;
+    int day;
+    int hour;
+    int minute;
+};
+
+// Job-Status-Variablen
+enum JobState { JOB_IDLE, JOB_OPEN_VALVE, JOB_START_PUMP, JOB_RUNNING, JOB_STOP_PUMP, JOB_CLOSE_VALVE };
+JobState currentJobState = JOB_IDLE;
+unsigned long jobStateTimestamp = 0;
+jobStruct runningJob;
+bool jobActive = false;
 
 // Create AsyncWebServer object on port 80
 AsyncWebServer server(80);
@@ -199,24 +207,26 @@ void recvMsg(uint8_t *data, size_t len){
 
 // Prints the content of a file to the Serial
 void printFile(const char *filename) {
-  // Open file for reading
-  File file = LittleFS.open(filename);
+    // Open file for reading
+    File file = LittleFS.open(filename);
 
-  if (!file) {
-    Serial.println(F("Failed to read file"));
+    if (!file) {
+        Serial.println(F("Failed to read file"));
+        WebSerial.println(F("Failed to read file"));
     return;
-  }
+    }
 
-  // Extract each characters by one by one
-  while (file.available()) {
-    Serial.print(F((char)file.read()));
-    WebSerial.print(F((char)file.read()));
-  }
-  Serial.println();
-  WebSerial.println();
+    // Extract each characters by one by one
+    while (file.available()) {
+        Serial.print(F((char)file.read()));
+        WebSerial.print(F((char)file.read()));
+    }
+    
+    Serial.println();
+    WebSerial.println();
 
-  // Close the file
-  file.close();
+    // Close the file
+    file.close();
 }
 
 // Loads the configuration from a file
@@ -228,7 +238,7 @@ void loadConfiguration(const char* configfile) {
         // Allocate a temporary JsonDocument
         // Don't forget to change the capacity to match your requirements.
         // Use arduinojson.org/v6/assistant to compute the capacity.
-        const uint8_t size = JSON_OBJECT_SIZE(10);
+        const uint8_t size = JSON_OBJECT_SIZE(4);
         StaticJsonDocument<size> doc;
 
         // Deserialize the JSON document
@@ -244,25 +254,10 @@ void loadConfiguration(const char* configfile) {
             Serial.println(F("Successfully read configuration file, using saved configuration"));
             WebSerial.print(F("Successfully read configuration file, using saved configuration\n"));
 
-            /*
-            float tmp = 0;
-
-            // Copy values from the JsonDocument to the Config
-            tmp = doc["Astra_Az"];
-            if ((tmp >= 90) && (tmp <= 270)) Astra_Az = tmp;
-
-            tmp = doc["Astra_El"];
-            if ((tmp >= 10) && (tmp <= 50)) Astra_El = tmp;
-
-            tmp = doc["El_Offset"];
-            if (abs(tmp) <= 90) El_Offset = tmp;
-
-            tmp = doc["Az_Offset"];
-            if (abs(tmp) <= 90) Az_Offset = tmp;
-
-            tmp = doc["motorSpeed"];
-            if ((tmp >= 500) && (tmp < 1024)) motorSpeed = trunc(tmp);
-            */
+            // Load settings from the JSON document
+            settings.use_webserial = doc["use_webserial"] | false;
+            settings.use_flowsensor = doc["use_flowsensor"] | false;
+            settings.use_moisturesensor = doc["use_moisturesensor"] | false;
         }
     }
 }
@@ -270,11 +265,11 @@ void loadConfiguration(const char* configfile) {
 // Saves the configuration to a file
 void saveConfiguration(const char* configfile) {
     if (LittleFS.exists(configfile)) {
-        // Delete existing file, otherwise the configuration is appended to the file
+        // Delete existing file
         LittleFS.remove(configfile);
     }
 
-    // Open file for writing
+    // Open new file for writing
     File file = LittleFS.open(configfile, "w");
     if (!file) {
         Serial.println(F("Failed to create configuration file"));
@@ -285,17 +280,13 @@ void saveConfiguration(const char* configfile) {
     // Allocate a temporary JsonDocument
     // Don't forget to change the capacity to match your requirements.
     // Use arduinojson.org/assistant to compute the capacity.
-    const uint8_t size = JSON_OBJECT_SIZE(10);
+    const uint8_t size = JSON_OBJECT_SIZE(4);
     StaticJsonDocument<size> doc;
 
-    // Set the values in the document
-    /*
-    doc["Azimut"] = Astra_Az;
-    doc["Elevator"] = Astra_El;
-    doc["El_Offset"] = El_Offset;
-    doc["Az_Offset"] = Az_Offset;
-    doc["motorSpeed"] = motorSpeed;
-    */
+    // Set settings values in JSON document
+    doc["use_webserial"] = settings.use_webserial;
+    doc["use_flowsensor"] = settings.use_flowsensor;
+    doc["use_moisturesensor"] = settings.use_moisturesensor;
 
     // Serialize JSON to file
     if (serializeJson(doc, file) == 0) {
@@ -305,6 +296,9 @@ void saveConfiguration(const char* configfile) {
 
     // Close the file
     file.close();
+
+    // Debug: Print file data
+    printFile(configfile);
 }
 
 int countJsonObjectsInFile(const char* filename) {
@@ -320,7 +314,7 @@ int countJsonObjectsInFile(const char* filename) {
 }
 
 // Loads the job schedules from a file
-void loadJobsDynamic(const char* jobsfile) {
+void loadJobList(const char* jobsfile) {
     int jobCount = countJsonObjectsInFile(jobsfile);
 
     if (jobCount == 0) {
@@ -364,20 +358,15 @@ void loadJobsDynamic(const char* jobsfile) {
             joblistVec.push_back(job);
         }
 
-        //Serial.printf("Loaded %d jobs\n", joblistVec.size());
-        jobStruct joblist[jobCount];
-
-        int count = std::min((int)joblistVec.size(), jobCount);
-        for (int i = 0; i < count; ++i) {
-            joblist[i] = joblistVec[i];
-        }
+        Serial.printf("Loaded %d jobs\n", joblistVec.size());
+        WebSerial.printf("Loaded %d jobs\n", joblistVec.size());
     }
 }
 
-// Saves the job schedules to a file
+// Saves the job schedules to a JSON file
 void handleSaveJobList(const char* jobsfile) {
     if (LittleFS.exists(jobsfile)) {
-        // Delete existing file, otherwise the configuration is appended to the file
+        // Delete existing file
         LittleFS.remove(jobsfile);
     }
 
@@ -389,27 +378,33 @@ void handleSaveJobList(const char* jobsfile) {
         return;
     }
 
-    // Get joblist array length
-    const int joblen = ARRAY_LEN(joblist);
+    // Get joblistVec array length
+    int joblen = joblistVec.size();
 
     // Allocate a temporary JsonDocument
     // Don't forget to change the capacity to match your requirements.
     // Use arduinojson.org/assistant to compute the capacity.
-    const int size = JSON_ARRAY_SIZE(joblen) + joblen*JSON_OBJECT_SIZE(9);
-    StaticJsonDocument<size> doc;
+    const size_t size = JSON_ARRAY_SIZE(joblen) + joblen*JSON_OBJECT_SIZE(8);
+    DynamicJsonDocument doc(size); // Use DynamicJsonDocument for runtime capacity
 
-    // Set the values in the document
-    for (jobStruct& s: joblist) {
-        JsonObject obj = doc.createNestedObject();
-        obj["id"] = s.id;
-        obj["active"] = s.active;
-        obj["name"] =s.name;
-        obj["job"] =s.job;
-        obj["plant"] =s.plant;
-        obj["duration"] =s.duration;
-        obj["starttime"] =s.starttime;
-        obj["everyday"] =s.everyday;
+    // convert joblistVec to JSON array
+    JsonArray joblistArray = doc.to<JsonArray>();
+    
+    // Iterate through the joblistVec and add each job to the dynamic JSON array
+    for (const jobStruct& job : joblistVec) {
+        JsonObject obj = joblistArray.add();
+        obj["id"] = job.id;
+        obj["active"] = job.active;
+        obj["name"] = job.name;
+        obj["job"] = job.job;
+        obj["plant"] = job.plant;
+        obj["duration"] = job.duration;
+        obj["starttime"] = job.starttime;
+        obj["everyday"] = job.everyday;
     }
+
+    // Clear jobListVec to prevent duplicate entries
+    joblistVec.clear();
 
     // Serialize JSON to file
     if (serializeJson(doc, file) == 0) {
@@ -422,12 +417,6 @@ void handleSaveJobList(const char* jobsfile) {
 
     // Debug: Print file data
     printFile(jobsfile);
-
-    // Serialize JSON object to string
-    /*String jsonString;
-    serializeJson(doc, jsonString);
-    Serial.println(jsonString);
-    WebSerial.println(jsonString);*/
 }
 
 void handleGetData() {
@@ -456,66 +445,100 @@ void handleGetData() {
 void handleGetSettings() {
     String Text;
 
-    const uint8_t size = JSON_OBJECT_SIZE(7);
-    StaticJsonDocument<size> root;
+    const uint8_t size = JSON_OBJECT_SIZE(5);
+    StaticJsonDocument<size> json;
 
-    root["action"] = action;
-    /*
-    root["azimut"] = Astra_Az;
-    root["elevation"] = Astra_El;
-    root["el_offset"] = El_Offset;
-    root["az_offset"] = Az_Offset;
-    root["motor_speed"] = motorSpeed;
-    */
+    // Clear the JSON object
+    json.clear();
+    // Set action for the JSON object
+    json["action"] = action;
+    // Fill JSON object with settings values
+    json["use_webserial"] = settings.use_webserial;
+    json["use_flowsensor"] = settings.use_flowsensor;
+    json["use_moisturesensor"] = settings.use_moisturesensor;
 
-    serializeJson(root, Text);
+    serializeJson(json, Text);
 
     ws.textAll(Text); //Send values to websocket clients 
 }
 
-void handleSetSettings(const JsonDocument& json) {
-    //float tmp;
+void handleSaveSettings(const JsonDocument& json) {
     String Text;
-
-    /*
-    tmp = float(json["azimut"]);
-    if ((tmp >= 90) && (tmp <= 270)) Astra_Az = tmp;
-
-    tmp = float(json["elevation"]);
-    if ((tmp >= 10) && (tmp <= 50)) Astra_El = tmp;
-
-    tmp = float(json["el_offset"]);
-    if (abs(tmp) <= 90) El_Offset = tmp;
-
-    tmp = float(json["az_offset"]);
-    if (abs(tmp) <= 90) Az_Offset = tmp;
-
-    tmp = float(json["motor_speed"]);
-    if ((tmp >= 500) && (tmp < 1024)) motorSpeed = trunc(tmp);
-    */
+    
+    // Save settings from JSON to settings structure
+    settings.use_webserial = json["use_webserial"] | false;
+    settings.use_flowsensor = json["use_flowsensor"] | false;
+    settings.use_moisturesensor = json["use_moisturesensor"] | false;
 
     saveConfiguration(configfile);
 
-    serializeJson(json, Text);
+    //serializeJson(json, Text);
 
+    //ws.textAll(Text);
+}
+
+void handleGetJobList() {
+    // Create a JSON document from joblist array and send it to the client
+    String Text;
+    
+    // Create a JSON document with a size based on the number of jobs
+    const size_t size = JSON_ARRAY_SIZE(joblistVec.size()) + joblistVec.size() * JSON_OBJECT_SIZE(8);
+    DynamicJsonDocument doc(size); // Use DynamicJsonDocument for runtime capacity
+    
+    // Create a JSON array in the document
+    JsonArray joblistArray = doc.to<JsonArray>();
+    
+    // Iterate through the joblistVec and add each job to the dynamic JSON array
+    for (const jobStruct& job : joblistVec) {
+        JsonObject obj = joblistArray.add();
+        obj["id"] = job.id;
+        obj["active"] = job.active;
+        obj["name"] = job.name;
+        obj["job"] = job.job;
+        obj["plant"] = job.plant;
+        obj["duration"] = job.duration;
+        obj["starttime"] = job.starttime;
+        obj["everyday"] = job.everyday;
+    }
+    // Set joblist array in the JSON document
+    doc["joblist"] = joblistArray;
+    // Set action for the JSON object
+    doc["action"] = "setjoblist";
+
+    // Serialize the JSON document to a string
+    serializeJson(doc, Text);
+
+    // Send the JSON string to all WebSocket clients
     ws.textAll(Text);
 }
 
 void handleAddJobToList(const JsonDocument& json) {
-    //float tmp;
-    //String Text;
-    
-    // Get next joblist index
-    int job = ARRAY_LEN(joblist);
+    // Add new json job data to dynamic jobListVec array
+    jobStruct newJob;
 
-    joblist[job] = {json["id"],json["active"],json["name"],json["job"],json["plant"],json["duration"],json["starttime"],json["everyday"]};
-    
-    /*serializeJson(json, Text);
+    // Check if job ID already exists
+    for (const jobStruct& job : joblistVec) {
+        if (job.id == json["id"]) {
+            Serial.println(F("Job ID already exists, not adding to job list"));
+            WebSerial.print(F("Job ID already exists, not adding to job list\n"));
+            return; // Exit if job ID already exists
+        }
+    }
 
-    Serial.println(Text);
-    WebSerial.println(Text);
+    // If job ID does not exist, proceed to add new job
+    Serial.println(F("Adding new job to job list"));
+    WebSerial.print(F("Adding new job to job list\n"));
 
-    ws.textAll(Text);*/
+    // Add new job to joblistVec from JSON data
+    newJob.id = json["id"] | 0;
+    newJob.active = json["active"] | false;
+    strlcpy(newJob.name, json["name"] | "", sizeof(newJob.name));
+    strlcpy(newJob.job, json["job"] | "", sizeof(newJob.job));
+    strlcpy(newJob.plant, json["plant"] | "", sizeof(newJob.plant));
+    newJob.duration = json["duration"] | 0;
+    strlcpy(newJob.starttime, json["starttime"] | "", sizeof(newJob.starttime));
+    newJob.everyday = json["everyday"] | false;
+    joblistVec.push_back(newJob);
 }
 
 void notifyClients() {
@@ -536,74 +559,50 @@ void handleAutoSwitch() {
     notifyClients();
 }
 
-void handleValveSwitch1() {
-    if (valve_switch_1) {
-        // Close valve only if pump isn't running
-        if (pumpState == LOW) {
-            // Close magnetic valve
-            digitalWrite(valvePin_1, LOW);
-            valve_switch_1 = false;
-            Serial.println("Valve Switch 1 closed");
-            WebSerial.print(F("Valve Switch 1 closed\n"));
-        }
-    } else {
-        // Open magnetic valve
-        digitalWrite(valvePin_1, HIGH);
-        valve_switch_1 = true;
-        Serial.println("Valve Switch 1 open");
-        WebSerial.print(F("Valve Switch 1 open\n"));
+void handleValveSwitch(int valveNum) {
+    int* valvePin;
+    bool* valve_switch;
+    int* valveState;
+
+    // Pointer auf die richtigen Variablen setzen
+    switch (valveNum) {
+        case 1:
+            valvePin = &valvePin_1;
+            valve_switch = &valve_switch_1;
+            valveState = &valve1State;
+            break;
+        case 2:
+            valvePin = &valvePin_2;
+            valve_switch = &valve_switch_2;
+            valveState = &valve2State;
+            break;
+        case 3:
+            valvePin = &valvePin_3;
+            valve_switch = &valve_switch_3;
+            valveState = &valve3State;
+            break;
+        default:
+            Serial.println("Invalid valve number!");
+            WebSerial.print(F("Invalid valve number!\n"));
+            return;
     }
 
-    // Read the state of the valve 1 pin value
-    valve1State = digitalRead(valvePin_1);
-
-    notifyClients();
-}
-
-void handleValveSwitch2() {
-    if (valve_switch_2) {
+    if (*valve_switch) {
         // Close valve only if pump isn't running
         if (pumpState == LOW) {
-            // Close magnetic valve
-            digitalWrite(valvePin_2, LOW);
-            valve_switch_2 = false;
-            Serial.println("Valve Switch 2 closed");
-            WebSerial.print(F("Valve Switch 2 closed\n"));
+            digitalWrite(*valvePin, LOW);
+            *valve_switch = false;
+            Serial.printf("Valve Switch %d closed\n", valveNum);
+            WebSerial.printf("Valve Switch %d closed\n", valveNum);
         }
     } else {
-        // Open magnetic valve
-        digitalWrite(valvePin_2, HIGH);
-        valve_switch_2 = true;
-        Serial.println("Valve Switch 2 open");
-        WebSerial.print(F("Valve Switch 2 open\n"));
+        digitalWrite(*valvePin, HIGH);
+        *valve_switch = true;
+        Serial.printf("Valve Switch %d open\n", valveNum);
+        WebSerial.printf("Valve Switch %d open\n", valveNum);
     }
 
-    // Read the state of the valve 2 pin value
-    valve2State = digitalRead(valvePin_2);
-
-    notifyClients();
-}
-
-void handleValveSwitch3() {
-    if (valve_switch_3) {
-        // Close valve only if pump isn't running
-        if (pumpState == LOW) {
-            // Close magnetic valve
-            digitalWrite(valvePin_3, LOW);
-            valve_switch_3 = false;
-            Serial.println("Valve Switch 3 closed");
-            WebSerial.print(F("Valve Switch 3 closed\n"));
-        }
-    } else {
-        // Open magnetic valve
-        digitalWrite(valvePin_3, HIGH);
-        valve_switch_3 = true;
-        Serial.println("Valve Switch 3 open");
-        WebSerial.print(F("Valve Switch 3 open\n"));
-    }
-
-    // Read the state of the valve 3 pin value
-    valve3State = digitalRead(valvePin_3);
+    *valveState = digitalRead(*valvePin);
 
     notifyClients();
 }
@@ -680,34 +679,16 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
 
         if (action == "getvalues") handleGetData();
         else if (action == "getsettings") handleGetSettings();
-        else if (action == "setsettings") handleSetSettings(json);
+        else if (action == "savesettings") handleSaveSettings(json);
+        else if (action == "getjoblist") handleGetJobList();
         else if (action == "addjobtolist") handleAddJobToList(json);
         else if (action == "savejoblist") handleSaveJobList(jobsfile);
         else if (action == "resetcounter") handleResetCounter();
         else if (action == "auto_switch") handleAutoSwitch();
-        else if (action == "valve_switch_1") handleValveSwitch1();
-        else if (action == "valve_switch_2") handleValveSwitch2();
-        else if (action == "valve_switch_3") handleValveSwitch3();
+        else if (action == "valve_switch_1") handleValveSwitch(1); // Switch for valve 1
+        else if (action == "valve_switch_2") handleValveSwitch(2); // Switch for valve 2
+        else if (action == "valve_switch_3") handleValveSwitch(3); // Switch for valve 3
         else if (action == "pump_switch") handlePumpSwitch();
-
-        /*    else if (action == "on") handleOn();
-        else if (action == "off") handleOff();
-        else if (action == "r_off") handleRotorOff();
-        else if (action == "az_up") handleAzUp();
-        else if (action == "az_down") handleAzDown();
-        else if (action == "el_up") handleElUp();
-        else if (action == "el_down") handleElDown();
-        else if (action == "om_el_up") handleOmElUp(json);
-        else if (action == "om_el_down") handleOmElDown(json);
-        else if (action == "rotor_up") handleRotorUp();
-        else if (action == "rotor_down") handleRotorDown();
-        else if (action == "rotor_up_step") handleRotorUpStep();
-        else if (action == "rotor_down_step") handleRotorDownStep();
-        else if (action == "cal") handleCal();
-        else if (action == "slider1") handleSlider1(json);
-        else if (action == "slider2") handleSlider2(json);
-        else if (action == "slider3") handleSlider3(json);
-        */
     }
 }
 
@@ -761,7 +742,7 @@ void calculateSoilFlowRate() {
     attachInterrupt(digitalPinToInterrupt(soilFlowSensorPin), pulseCounter, FALLING);
 }
   
-void calculateMoistureSensorValues() {
+/*void calculateMoistureSensorValues() {
     // Calculate Moisture Sensor 1 Values
     moistureSensorValue_1 = analogRead(moistureSensorPin_1);
     Serial.print("Analog Moisture 1 Value : ");
@@ -869,12 +850,6 @@ void calculateMoistureSensorValues() {
         Serial.println("Valve Switch 2 closed");
         WebSerial.print(F("Valve Switch 2 closed\n"));
     }
-}
-
-/*void dailyTask() {
-    Serial.println("#########\nDoing daily task...\n#########");
-    WebSerial.print(F("#########\nDoing daily task...\n#########"));
-    // ENTER YOUR TASK HERE
 }*/
 
 void syncTime() {
@@ -896,6 +871,110 @@ void syncTime() {
     tzset();
 
     lastNTPUpdate = millis(); // Record the time of the last sync
+}
+
+// Hilfsfunktion zum Parsen des Startzeit-Strings
+jobDateTime parseJobDateTime(const char* starttime) {
+    jobDateTime dt;
+    // Erwartetes Format: "YYYY-MM-DDTHH:MM"
+    dt.year   = atoi(String(starttime).substring(0, 4).c_str());
+    dt.month  = atoi(String(starttime).substring(5, 7).c_str());
+    dt.day    = atoi(String(starttime).substring(8, 10).c_str());
+    dt.hour   = atoi(String(starttime).substring(11, 13).c_str());
+    dt.minute = atoi(String(starttime).substring(14, 16).c_str());
+    return dt;
+}
+
+// This function will be called when a job is due to run
+// Starte einen Job (ohne delay!)
+void processJob(const jobStruct& job) {
+    if (pumpState == LOW && !jobActive) {
+        runningJob = job;
+        currentJobState = JOB_OPEN_VALVE;
+        jobStateTimestamp = millis();
+        jobActive = true;
+        Serial.printf("Start background job: %s for plant: %s\n", job.job, job.plant);
+        WebSerial.printf("Start background job: %s for plant: %s\n", job.job, job.plant);
+    }
+}
+
+// This function processes the jobs based on the joblistVec
+// It checks the current time against the job start times and executes jobs that are due
+// It supports both daily jobs and one-time jobs based on the job's start time
+void jobsProcessor() {
+    // Process jobs based on the joblistVec
+    time_t now = time(nullptr);
+    struct tm timeinfo;
+    localtime_r(&now, &timeinfo);
+
+    // Iterate through the joblistVec to check for jobs to run
+    for (const jobStruct& job : joblistVec) {
+        if (job.active) {
+            jobDateTime dt = parseJobDateTime(job.starttime);
+
+            // Check if the job is set to run every day or on a specific date and time
+            // Compare time based on the job's everyday flag
+            if (job.everyday) {
+                if (timeinfo.tm_hour == dt.hour && timeinfo.tm_min == dt.minute) {
+                    // Execute job
+                    processJob(job);
+                }
+            } else {
+                // Compare date/time for one-time jobs
+                // Check if the current date and time matches the job's scheduled date and time
+                if ((timeinfo.tm_year + 1900 == dt.year) &&
+                    (timeinfo.tm_mon + 1 == dt.month) &&
+                    (timeinfo.tm_mday == dt.day) &&
+                    (timeinfo.tm_hour == dt.hour) &&
+                    (timeinfo.tm_min == dt.minute)) {
+                    // Execute job
+                    processJob(job);
+                }
+            }
+        }
+    }
+}
+
+// This function handles the job state machine
+// It manages the different states of a job (idle, open valve, start pump, running, stop pump)
+// and transitions between these states based on the job's duration and timing
+void handleJobStateMachine() {
+    switch (currentJobState) {
+        case JOB_IDLE:
+            // nichts tun
+            break;
+        case JOB_OPEN_VALVE: {
+            int plantNum = atoi(runningJob.plant + 6);
+            handleValveSwitch(plantNum);
+            currentJobState = JOB_START_PUMP;
+            jobStateTimestamp = millis();
+            break;
+        }
+        case JOB_START_PUMP:
+            if (millis() - jobStateTimestamp >= 1000) { // 1 Sekunde warten
+                handlePumpSwitch();
+                currentJobState = JOB_RUNNING;
+                jobStateTimestamp = millis();
+            }
+            break;
+        case JOB_RUNNING:
+            if (millis() - jobStateTimestamp >= runningJob.duration * 1000) {
+                handlePumpSwitch();
+                currentJobState = JOB_STOP_PUMP;
+                jobStateTimestamp = millis();
+            }
+            break;
+        case JOB_STOP_PUMP:
+            if (millis() - jobStateTimestamp >= 5000) { // 5 Sekunden warten
+                int plantNum = atoi(runningJob.plant + 6);
+                handleValveSwitch(plantNum);
+                currentJobState = JOB_IDLE;
+                jobActive = false;
+                Serial.println("Job finished.");
+                WebSerial.print(F("Job finished.\n"));
+            }
+            break;
+    }
 }
 
 void setup(void) {
@@ -950,10 +1029,10 @@ void setup(void) {
     syncTime();
 
     // Load JSON configuration
-    //loadConfiguration(configfile);
+    loadConfiguration(configfile);
 
     // Load JSON job schedules
-    //loadJobs(jobsfile);
+    loadJobList(jobsfile);
 }
 
 void loop(void) {
@@ -968,24 +1047,24 @@ void loop(void) {
     // Websocket cleanup clients
     ws.cleanupClients();
 
-    // Check if it's time to run the daily task
-    /*if (timeinfo.tm_hour == taskHour && timeinfo.tm_min == taskMinute && lastRunDay != timeinfo.tm_mday) {
-        dailyTask();
-        // Set the day to ensure it only runs once per day
-        lastRunDay = timeinfo.tm_mday;
-    }*/
+    // Job-Statusmaschine ausführen
+    handleJobStateMachine();
 
-    
-    // Start tasks if pump is running
+    // Check if auto switch is enabled
+    if (auto_switch) {
+        // Execute jobs processing
+        jobsProcessor();
+    }
+
+    // If pump is running calculate runtime and flow rate
     if (pumpState == HIGH) {
         // Update timer
         if ((millis() - lastTime) > timerDelay) {
             // Stopwatch pump runtime
             pumpRunTime = (millis() - pumpStartTime) / 1000;
-            
             // Calculate Soil Flowrate
             calculateSoilFlowRate();
-
+            // Notify clients with updated data
             notifyClients();
             lastTime = millis();
         }
@@ -993,7 +1072,7 @@ void loop(void) {
 
     // Calculate Moisture Sensor Values
     //calculateMoistureSensorValues();
-    
+
     // Resynchronize with NTP every 30 minutes
     if (millis() - lastNTPUpdate > ntpSyncInterval) {
         syncTime();
@@ -1008,7 +1087,5 @@ void loop(void) {
                 timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday);
     }
 
-    //Serial.println();
     delay(1000);
-    //delay(10);
 }

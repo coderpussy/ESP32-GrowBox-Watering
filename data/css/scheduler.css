@@ -49,3 +49,16 @@
     flex-direction: row;
     justify-content: end;
 }
+input#job-duration + span::after {
+    font-weight: bold;
+    padding-left: 5px;
+}
+input#job-duration:invalid + span::after {
+    content: "✖";
+    color: red;
+}
+
+input#job-duration:valid + span::after {
+    content: "✓";
+    color: green;
+}

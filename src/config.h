@@ -1,8 +1,5 @@
-// Version 0.9, 22.06.2025, coderpussy
-const char* APP_VERSION = "0.9";
-
-// Correction for compass direction of pcb mount
-//#define Az_PCB_Correction 90
+// Version 0.9 pre3, 14.08.2025, coderpussy
+const char* APP_VERSION = "0.9 pre3";
 
 // If need to format LITTLEFS filesystem due to corruption
 // After formatting LITTLEFS, please set below variable to false,
@@ -23,14 +20,12 @@ const char* password_sta = "xxxxxxxxxxxxxxxxx";      // Set STA password
 // Timezone string for your region, example: https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv
 const char* timezone = "CET-1CEST,M3.5.0,M10.5.0/3"; // CET-1CEST,M3.5.0,M10.5.0/3 = Europe/Berlin
 
-// Astra 19.2 position and dish specific offsets
-//float Astra_Az = 173.34,
-//      Astra_El = 29.40,
-//      El_Offset = -18.00,
-//      Az_Offset = -10.00;
-
-// Actuator speed
-//int motorSpeed = 700;                                   // Change (lower) this if dish is begining to swing
+// Settings structure
+struct Settings {
+    bool use_webserial = false; // Enable WebSerial
+    bool use_flowsensor = false; // Enable Flow Sensor
+    bool use_moisturesensor = false; // Enable Moisture Sensor
+};
 
 // Define config file on LittleFS
 const char* configfile = "/settings.json";

@@ -4,61 +4,22 @@ var websocket;
 window.addEventListener('load', onload);
 var action;
 
+// Dashboard control elements
 var auto_switch = document.getElementById("auto_switch");
 var valve_switch_1 = document.getElementById("valve_switch_1");
 var valve_switch_2 = document.getElementById("valve_switch_2");
 var valve_switch_3 = document.getElementById("valve_switch_3");
-
+// Pump control element
 var pump_switch = document.getElementById("pump_switch");
+// Pump run time display
 var pumpRunTime = document.getElementById("pumpRunTime");
-
+// Soil flow volume display
 var soilFlowVolume = document.getElementById("soilFlowVolume");
 
-/*var oc_azimut = document.getElementById("oc_azimut");
-var oc_elevation = document.getElementById("oc_elevation");
-var oc_el_offset = document.getElementById("oc_el_offset");
-var oc_az_offset = document.getElementById("oc_az_offset");
-var oc_motor_speed = document.getElementById("oc_motor_speed");
-
-var om_time = document.getElementById("om_time");
-var om_speed = document.getElementById("om_speed");
-var om_steps = document.getElementById("om_steps");
-var om_azimut = document.getElementById("om_azimut");
-var om_elevation = document.getElementById("om_elevation");
-
-var led_level = document.getElementById("led_level");
-var state = document.getElementById("state");
-var azimut = document.getElementById("azimut");
-var elevation = document.getElementById("elevation");
-
-var s_azimut = document.getElementById("s_azimut");
-var s_elevation = document.getElementById("s_elevation");
-
-var slider1 = document.getElementById("myAzRange");
-var output1 = document.getElementById("d_azimut");
-
-var slider2 = document.getElementById("myElRange");
-var output2 = document.getElementById("d_elevation");
-
-var slider3 = document.getElementById("myRotorRange");
-var output3 = document.getElementById("rotor");
-*/
-
-// Slider on change functions
-/*slider1.onchange = function() {
-    output1.innerHTML = (this.value *1).toFixed(1);
-    websocket.send(JSON.stringify({"action":"slider1","level":this.value}));
-}
-
-slider2.onchange = function() {
-    output2.innerHTML = (this.value *1).toFixed(1);
-    websocket.send(JSON.stringify({"action":"slider2","level":this.value}));
-}
-
-slider3.onchange = function() {
-    output3.innerHTML = (this.value *1).toFixed(1);
-    websocket.send(JSON.stringify({"action":"slider3","level":this.value}));
-}*/
+// Settings control elements
+var use_webserial = document.getElementById("use_webserial");
+var use_flowsensor = document.getElementById("use_flowsensor");
+var use_moisturesensor = document.getElementById("use_moisturesensor");
 
 // Checkbox valve switches event listener
 auto_switch.addEventListener('change', e => {
@@ -119,7 +80,7 @@ function initWebSocket() {
 }
 
 function onload(event) {
-    initWebSocket();
+    //initWebSocket();
     initToggleOverlay();
 }
 
@@ -129,6 +90,8 @@ function onOpen(event) {
     getValues();
     // get initial settings data
     getSettings();
+    // get job list data
+    getJobList();
 }
 
 function onClose(event) {
@@ -143,67 +106,50 @@ function onMessage(event) {
     console.log('message:',data);
     
     if (action == "getsettings" || action == "savesettings") {
-        /*oc_azimut.value = data.azimut;
-        oc_elevation.value = data.elevation;
-        oc_el_offset.value = data.el_offset;
-        oc_az_offset.value = data.az_offset;
-        oc_motor_speed.value = data.motor_speed;*/
+        // Update settings checkboxes
+        use_webserial.checked = data.use_webserial;
+        use_flowsensor.checked = data.use_flowsensor;
+        use_moisturesensor.checked = data.use_moisturesensor;
+
+        // Show/hide webserial settings based on use_webserial
+        if (use_webserial.checked) {
+            document.querySelector(".topnav .webserial").style.display = "normal";
+            document.querySelector("#overlay-webserial").style.display = "normal";
+        } else {
+            document.querySelector(".topnav .webserial").style.display = "none";
+            document.querySelector("#overlay-webserial").style.display = "none";
+        }
+        // Show/hide flow sensor settings based on use_flowsensor
+        if (use_flowsensor.checked) {
+            document.querySelector("#soilFlowVolumeWrapper").style.display = "normal";
+        } else {
+            document.querySelector("#soilFlowVolumeWrapper").style.display = "none";
+        }
+        // Show/hide moisture sensor settings based on use_moisturesensor
+        if (use_moisturesensor.checked) {
+            document.querySelector("#moistureSensorsWrapper").style.display = "normal";
+        } else {
+            document.querySelector("#moistureSensorsWrapper").style.display = "none";
+        }
+    } else if (action == "setjoblist") {
+        // Set job list from received joblist data
+        setJobList(data.joblist);
     } else {
+        // Update dashboard control elements
         auto_switch.checked = data.auto_switch;
         valve_switch_1.checked = data.valve_switch_1;
         valve_switch_2.checked = data.valve_switch_2;
         valve_switch_3.checked = data.valve_switch_3;
-
+        // Update pump control
         pump_switch.checked = data.pump_switch;
+        // Update pump run time
         pumpRunTime.innerText = data.pumpRunTime;
-
+        // Update soil flow volume
         soilFlowVolume.innerText = data.soilFlowVolume;
 
-        /*led_level.value = (data.led_level *1).toFixed(1);
-        state.innerText = data.state;
-        
-        azimut.innerText = (data.azimut *1).toFixed(1);
-        elevation.innerText = (data.elevation *1).toFixed(1);
-        om_azimut.innerText = (data.azimut *1).toFixed(1);
-        om_elevation.innerText = (data.elevation *1).toFixed(1);
-    
-        s_azimut.innerText = (data.s_azimut *1).toFixed(1);
-        s_elevation.innerText = (data.s_elevation *1).toFixed(1);
-        
-        output1.innerHTML = (data.d_azimut*1).toFixed(1);
-        slider1.value = data.d_azimut;
-        
-        output2.innerHTML = (data.d_elevation*1).toFixed(1);
-        slider2.value = data.d_elevation;
-    
-        output3.innerHTML = (data.rotor*1).toFixed(1);
-        slider3.value = data.rotor;*/
+        /*led_level.value = (data.test *1).toFixed(1);*/ // example of updating a control element
     }
 }
-
-/*function button_clicked(action) {
-    if (action == "om_el_up" || action == "om_el_down") {
-        websocket.send(JSON.stringify({"time":om_time.value,"speed":om_speed.value,"action":action}));
-    }
-    else if (action == "om_az_up" || action == "om_az_down") {
-        if (action == "om_az_up") {
-            if (om_steps.value == "short") {
-                websocket.send(JSON.stringify({"action":"rotor_up_step"}));
-            } else {
-                websocket.send(JSON.stringify({"action":"rotor_up"}));
-            }
-        } else {
-            if (om_steps.value == "short") {
-                websocket.send(JSON.stringify({"action":"rotor_down_step"}));
-            } else {
-                websocket.send(JSON.stringify({"action":"rotor_down"}));
-            }
-        }
-    }
-    else {
-        websocket.send(JSON.stringify({"action":action}));
-    }
-}*/
 
 function getValues() {
     websocket.send(JSON.stringify({"action":"getvalues"}));
@@ -213,12 +159,16 @@ function getSettings() {
     websocket.send(JSON.stringify({"action":"getsettings"}));
 }
 
+function getJobList() {
+    websocket.send(JSON.stringify({"action":"getjoblist"}));
+}
+
 function resetCounter() {
     websocket.send(JSON.stringify({"action":"resetcounter"}));
 }
 
-function saveSettings() {    
-    //websocket.send(JSON.stringify({"azimut":oc_azimut.value,"elevation":oc_elevation.value,"az_offset":oc_az_offset.value,"el_offset":oc_el_offset.value,"motor_speed":oc_motor_speed.value,"action":"savesettings"}));
+function saveSettings() {
+    websocket.send(JSON.stringify({"action":"savesettings","use_webserial":use_webserial.checked,"use_flowsensor":use_flowsensor.checked,"use_moisturesensor":use_moisturesensor.checked}));
 
     toggleOverlay("settings");
 }
