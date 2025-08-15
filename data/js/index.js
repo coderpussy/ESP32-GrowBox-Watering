@@ -80,7 +80,7 @@ function initWebSocket() {
 }
 
 function onload(event) {
-    //initWebSocket();
+    initWebSocket();
     initToggleOverlay();
 }
 

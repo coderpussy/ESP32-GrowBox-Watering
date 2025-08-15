@@ -319,6 +319,7 @@ void loadJobList(const char* jobsfile) {
 
     if (jobCount == 0) {
         Serial.println(F("No jobs found or file error"));
+        WebSerial.print(F("No jobs found or file error\n"));
         return;
     }
 
@@ -404,7 +405,7 @@ void handleSaveJobList(const char* jobsfile) {
     }
 
     // Clear jobListVec to prevent duplicate entries
-    joblistVec.clear();
+    //joblistVec.clear();
 
     // Serialize JSON to file
     if (serializeJson(doc, file) == 0) {
@@ -482,7 +483,7 @@ void handleGetJobList() {
     String Text;
     
     // Create a JSON document with a size based on the number of jobs
-    const size_t size = JSON_ARRAY_SIZE(joblistVec.size()) + joblistVec.size() * JSON_OBJECT_SIZE(8);
+    const size_t size = JSON_ARRAY_SIZE(joblistVec.size()) + (joblistVec.size() * JSON_OBJECT_SIZE(8)) + (1 * JSON_OBJECT_SIZE(2));
     DynamicJsonDocument doc(size); // Use DynamicJsonDocument for runtime capacity
     
     // Create a JSON array in the document
