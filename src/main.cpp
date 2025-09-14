@@ -14,6 +14,12 @@
 
 // ESP32 Growbox Watering System
 // Controls water pump and water valve units for 3 plants in a grow tent
+// Uses WebSerial for debugging and configuration
+// Uses LittleFS for configuration and job scheduling
+// Uses AsyncWebServer for web interface
+// Uses ArduinoJson for JSON handling
+// Uses NTP for time synchronization
+// Uses WebSocket for real-time communication
 
 // History
 // Version 0.9 pre3, 14.08.2025, coderpussy
@@ -28,7 +34,7 @@
 #include <time.h>
 #include "config.h"
 
-#include <vector> // Für dynamisches Array
+#include <vector> // For dynamic array
 
 
 // NTP sync options
@@ -108,8 +114,8 @@ struct jobStruct {
     char starttime[25];
     bool everyday;
 };
-// Dynamic array for jobs
-std::vector<jobStruct> joblistVec; // Dynamisches Array für Jobs
+// Dynamic vector array for jobs
+std::vector<jobStruct> joblistVec;
 
 // Job date/time structure
 struct jobDateTime {
@@ -120,19 +126,23 @@ struct jobDateTime {
     int minute;
 };
 
-// Job-Status-Variablen
+// Job-State-Variables
 enum JobState { JOB_IDLE, JOB_OPEN_VALVE, JOB_START_PUMP, JOB_RUNNING, JOB_STOP_PUMP, JOB_CLOSE_VALVE };
 JobState currentJobState = JOB_IDLE;
 unsigned long jobStateTimestamp = 0;
 jobStruct runningJob;
 bool jobActive = false;
 
-// Create AsyncWebServer object on port 80
+// Create asynchronous WebServer object on port 80
 AsyncWebServer server(80);
 
-// Create a WebSocket object
+// Create a asynchronous WebSocket object
 AsyncWebSocket ws("/ws");
 
+// IRAM ATTR function to count pulses from the flow sensor
+// This function is called in the ISR when a pulse is detected
+// It increments the pulseCount variable, which is used to calculate flow rate and volume
+// The IRAM_ATTR attribute ensures that this function is placed in the IRAM (Instruction RAM) of the ESP32,
 void IRAM_ATTR pulseCounter() {
     pulseCount++;
 }
@@ -323,7 +333,7 @@ void loadJobList(const char* jobsfile) {
         return;
     }
 
-    // Passe die Felderzahl ggf. an deine Struktur an!
+    // Get xapacity based on job count
     const size_t capacity = JSON_ARRAY_SIZE(jobCount) + jobCount * JSON_OBJECT_SIZE(8);
     //StaticJsonDocument<2048> doc;
     DynamicJsonDocument doc(capacity); // Use DynamicJsonDocument for runtime capacity
@@ -342,7 +352,7 @@ void loadJobList(const char* jobsfile) {
         Serial.println(F("Successfully read job schedules file, using saved job schedules"));
         WebSerial.print(F("Successfully read job schedules file, using saved job schedules\n"));
 
-        // Annahme: Die Datei enthält ein JSON-Array auf oberster Ebene
+        // Assume: File contains a JSON-Array at top level
         JsonArray arr = doc.as<JsonArray>();
         joblistVec.clear();
 
@@ -426,8 +436,10 @@ void handleGetData() {
     const uint8_t size = JSON_OBJECT_SIZE(9);
     StaticJsonDocument<size> root;
 
-    root["action"] = "getvalues";
+    // Set action for the JSON object
+    root["action"] = "setvalues";
 
+    // Fill JSON object with values
     root["auto_switch"] = auto_switch;
     root["valve_switch_1"] = valve_switch_1;
     root["valve_switch_2"] = valve_switch_2;
@@ -440,7 +452,7 @@ void handleGetData() {
 
     serializeJson(root, Text);
 
-    ws.textAll(Text); //Send sensors values to websocket clients
+    ws.textAll(Text); // Send sensors values to websocket clients
 }
 
 void handleGetSettings() {
@@ -451,8 +463,10 @@ void handleGetSettings() {
 
     // Clear the JSON object
     json.clear();
+
     // Set action for the JSON object
-    json["action"] = action;
+    json["action"] = "setsettings";
+
     // Fill JSON object with settings values
     json["use_webserial"] = settings.use_webserial;
     json["use_flowsensor"] = settings.use_flowsensor;
@@ -481,9 +495,19 @@ void handleSaveSettings(const JsonDocument& json) {
 void handleGetJobList() {
     // Create a JSON document from joblist array and send it to the client
     String Text;
-    
+    int arrayCount = 1;
+
+    // Check if joblistVec is not empty
+    // If it is empty, we will still create a JSON array with one empty object
+    // This ensures that the JSON structure is always valid
+    if (!joblistVec.empty()) {
+        arrayCount = joblistVec.size();
+    }
+
     // Create a JSON document with a size based on the number of jobs
-    const size_t size = JSON_ARRAY_SIZE(joblistVec.size()) + (joblistVec.size() * JSON_OBJECT_SIZE(8)) + (1 * JSON_OBJECT_SIZE(2));
+    const size_t size = JSON_ARRAY_SIZE(arrayCount) + 
+                        (arrayCount * JSON_OBJECT_SIZE(8)) + 
+                        (1 * JSON_OBJECT_SIZE(3));
     DynamicJsonDocument doc(size); // Use DynamicJsonDocument for runtime capacity
     
     // Create a JSON array in the document
@@ -501,10 +525,11 @@ void handleGetJobList() {
         obj["starttime"] = job.starttime;
         obj["everyday"] = job.everyday;
     }
-    // Set joblist array in the JSON document
-    doc["joblist"] = joblistArray;
     // Set action for the JSON object
     doc["action"] = "setjoblist";
+    
+    // Set joblist array in the JSON document
+    doc["joblist"] = joblistArray;
 
     // Serialize the JSON document to a string
     serializeJson(doc, Text);
@@ -565,7 +590,7 @@ void handleValveSwitch(int valveNum) {
     bool* valve_switch;
     int* valveState;
 
-    // Pointer auf die richtigen Variablen setzen
+    // Set pointers based on valve number
     switch (valveNum) {
         case 1:
             valvePin = &valvePin_1;
@@ -874,10 +899,10 @@ void syncTime() {
     lastNTPUpdate = millis(); // Record the time of the last sync
 }
 
-// Hilfsfunktion zum Parsen des Startzeit-Strings
+// Helper function to parse job start time from string
 jobDateTime parseJobDateTime(const char* starttime) {
     jobDateTime dt;
-    // Erwartetes Format: "YYYY-MM-DDTHH:MM"
+    // Expect format: "YYYY-MM-DDTHH:MM"
     dt.year   = atoi(String(starttime).substring(0, 4).c_str());
     dt.month  = atoi(String(starttime).substring(5, 7).c_str());
     dt.day    = atoi(String(starttime).substring(8, 10).c_str());
@@ -887,7 +912,7 @@ jobDateTime parseJobDateTime(const char* starttime) {
 }
 
 // This function will be called when a job is due to run
-// Starte einen Job (ohne delay!)
+// Start job (without delay!)
 void processJob(const jobStruct& job) {
     if (pumpState == LOW && !jobActive) {
         runningJob = job;
@@ -942,7 +967,7 @@ void jobsProcessor() {
 void handleJobStateMachine() {
     switch (currentJobState) {
         case JOB_IDLE:
-            // nichts tun
+            // do nothing, wait for a job to start
             break;
         case JOB_OPEN_VALVE: {
             int plantNum = atoi(runningJob.plant + 6);
@@ -952,7 +977,7 @@ void handleJobStateMachine() {
             break;
         }
         case JOB_START_PUMP:
-            if (millis() - jobStateTimestamp >= 1000) { // 1 Sekunde warten
+            if (millis() - jobStateTimestamp >= 1000) { // wait 1 second before starting the pump
                 handlePumpSwitch();
                 currentJobState = JOB_RUNNING;
                 jobStateTimestamp = millis();
@@ -966,7 +991,7 @@ void handleJobStateMachine() {
             }
             break;
         case JOB_STOP_PUMP:
-            if (millis() - jobStateTimestamp >= 5000) { // 5 Sekunden warten
+            if (millis() - jobStateTimestamp >= 5000) { // wait 5 seconds before closing the valve
                 int plantNum = atoi(runningJob.plant + 6);
                 handleValveSwitch(plantNum);
                 currentJobState = JOB_IDLE;
@@ -1048,7 +1073,7 @@ void loop(void) {
     // Websocket cleanup clients
     ws.cleanupClients();
 
-    // Job-Statusmaschine ausführen
+    // Execute job state machine
     handleJobStateMachine();
 
     // Check if auto switch is enabled

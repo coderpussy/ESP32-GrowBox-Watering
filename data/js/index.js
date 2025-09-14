@@ -1,3 +1,6 @@
+// Import necessary modules
+import { setJobList } from "./scheduler.js";
+
 // Initialization
 var gateway = `ws://${window.location.hostname}/ws`;
 var websocket;
@@ -105,7 +108,21 @@ function onMessage(event) {
     action = data.action;
     console.log('message:',data);
     
-    if (action == "getsettings" || action == "savesettings") {
+    if (action == "setvalues") {
+        // Update dashboard control elements
+        auto_switch.checked = data.auto_switch;
+        valve_switch_1.checked = data.valve_switch_1;
+        valve_switch_2.checked = data.valve_switch_2;
+        valve_switch_3.checked = data.valve_switch_3;
+        // Update pump control
+        pump_switch.checked = data.pump_switch;
+        // Update pump run time
+        pumpRunTime.innerText = data.pumpRunTime;
+        // Update soil flow volume
+        soilFlowVolume.innerText = data.soilFlowVolume;
+
+        /*led_level.value = (data.test *1).toFixed(1);*/ // example of updating a control element
+    } else if (action == "setsettings") {
         // Update settings checkboxes
         use_webserial.checked = data.use_webserial;
         use_flowsensor.checked = data.use_flowsensor;
@@ -134,20 +151,6 @@ function onMessage(event) {
     } else if (action == "setjoblist") {
         // Set job list from received joblist data
         setJobList(data.joblist);
-    } else {
-        // Update dashboard control elements
-        auto_switch.checked = data.auto_switch;
-        valve_switch_1.checked = data.valve_switch_1;
-        valve_switch_2.checked = data.valve_switch_2;
-        valve_switch_3.checked = data.valve_switch_3;
-        // Update pump control
-        pump_switch.checked = data.pump_switch;
-        // Update pump run time
-        pumpRunTime.innerText = data.pumpRunTime;
-        // Update soil flow volume
-        soilFlowVolume.innerText = data.soilFlowVolume;
-
-        /*led_level.value = (data.test *1).toFixed(1);*/ // example of updating a control element
     }
 }
 

@@ -7,7 +7,7 @@ const char* APP_VERSION = "0.9 pre3";
 #define FORMAT_LITTLEFS_IF_FAILED false
 
 // Wifi: Select AP or Client
-#define WiFiMode_AP_STA 1                               // Defines WiFi Mode 0 -> AP (with IP:192.168.4.1 and  1 -> Station (client with IP: via DHCP)
+#define WiFiMode_AP_STA 0                               // Defines WiFi Mode 0 -> AP (with IP:192.168.4.1 and  1 -> Station (client with IP: via DHCP)
 
 // Enter your AP SSID and PASSWORD
 const char* ssid_ap = "growboxwatering";                // Set AP SSID name

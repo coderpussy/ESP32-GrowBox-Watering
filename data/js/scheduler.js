@@ -99,8 +99,6 @@ function setJobList(data) {
 
 async function saveJobs() {
     const collection = jobList.children;
-    //let tempjobs = '';
-    //let jobJSON = "";
 
     for (let i = 0; i < collection.length; i++) {
         let id = i;
@@ -117,7 +115,7 @@ async function saveJobs() {
         console.log(JSON.stringify({"action":"addjobtolist","id":id,"active":active,"name":name,"job":job,"plant":plant,"duration":duration,"starttime":starttime,"everyday":everyday}));
         
         websocket.send(JSON.stringify({"action":"addjobtolist","id":id,"active":active,"name":name,"job":job,"plant":plant,"duration":duration,"starttime":starttime,"everyday":everyday}));
-        await sleep(2000);
+        await sleep(400);
     }
 
     websocket.send(JSON.stringify({"action":"savejoblist"}));
@@ -151,3 +149,5 @@ function doJobList(event) {
         return;
     }
 }
+
+export { setJobList };
