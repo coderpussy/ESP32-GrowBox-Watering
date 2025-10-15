@@ -35,32 +35,73 @@
 #include "config.h"
 
 #include <vector> // For dynamic array
+#include <stdio.h> // for sscanf
+#include <stdarg.h> // for va_list, va_start, va_end
+#include <limits.h>
 
+// WebSerial message queue
+struct WebSerialMessage {
+    char message[192];
+    unsigned long timestamp;
+};
+
+static const size_t WEBSERIAL_QUEUE_SIZE = 32;
+std::vector<WebSerialMessage> webSerialQueue;
+unsigned long lastWebSerialFlush = 0;
+static const unsigned long WEBSERIAL_FLUSH_INTERVAL = 0; // 0ms due to delivery lost // 50ms between messages
+
+static const unsigned long JOB_CHECK_INTERVAL = 1000;  // Check jobs every second
+static unsigned long lastJobCheck = 0;
 
 // NTP sync options
-unsigned long lastNTPUpdate = 0; // Timestamp for the last NTP sync
 const unsigned long ntpSyncInterval = 30 * 60 * 1000; // Sync every 30 minutes (in ms)
+static const unsigned long NTP_WAIT_LOG_INTERVAL = 2000;  // 2 seconds between "waiting" messages
+
+// NTP state machine
+enum NTPState { 
+    NTP_IDLE,
+    NTP_INIT,
+    NTP_WAITING,
+    NTP_DONE
+};
+
+struct NTPContext {
+    NTPState state;
+    unsigned long stateTime;
+    unsigned long lastSync;
+    bool syncInProgress;
+    int retryCount;
+} ntpCtx = {NTP_IDLE, 0, 0, false, 0};
+
+// Pump state machine
+enum PumpState { 
+    PUMP_IDLE,
+    PUMP_STARTING,
+    PUMP_RUNNING,
+    PUMP_STOPPING
+};
+
+struct PumpContext {
+    PumpState state;
+    unsigned long stateTime;
+    bool manualControl;
+    bool targetState;  // true = on, false = off
+} pumpCtx = {PUMP_IDLE, 0, false, false};
 
 // Automatic watering switch
 bool auto_switch = false;
 
 // 12V Magnetic valve 1-3
-int valvePin_1 = 25;
-int valvePin_2 = 26;
-int valvePin_3 = 27;
-
-bool valve_switch_1 = false;
-bool valve_switch_2 = false;
-bool valve_switch_3 = false;
-int valve1State = 0;
-int valve2State = 0;
-int valve3State = 0;
+std::vector<int> valvePins;
+std::vector<bool> valve_switches;
+std::vector<int> valveStates;
 
  // 12V Water Pump
 int pumpPin = 33;
 
 bool pump_switch = false;
 float pumpStartTime = 0;
+unsigned long pumpStartMillis = 0;
 float pumpRunTime = 0;
 float pumpTimeNow = 0;
 int pumpState = 0;
@@ -73,6 +114,7 @@ int moistureSensorPin_3 = 18;
 float moistureSensorValue_1 = 0;
 float moistureSensorValue_2 = 0;
 float moistureSensorValue_3 = 0;
+
 int moistureSensorValuePercent_1 = 0;
 int moistureSensorValuePercent_2 = 0;
 int moistureSensorValuePercent_3 = 0;
@@ -89,9 +131,6 @@ float soilFlowRate = 0.0;
 float soilFlowVolume = 0.0;
 float roundSoilFlowVolume = 0.0;
 float tempsoilFlowVolume = 0.0;
-
-// variables to save values from HTML form
-const char* act;
 
 // initial action string value
 String action;
@@ -114,6 +153,7 @@ struct jobStruct {
     char starttime[25];
     bool everyday;
 };
+
 // Dynamic vector array for jobs
 std::vector<jobStruct> joblistVec;
 
@@ -124,6 +164,8 @@ struct jobDateTime {
     int day;
     int hour;
     int minute;
+    bool valid;     // if true, date/time was parsed correctly
+    bool timeOnly;  // true if only time (hh:mm) was provided, false if full date/time (yyyy-mm-dd hh:mm)
 };
 
 // Job-State-Variables
@@ -133,11 +175,43 @@ unsigned long jobStateTimestamp = 0;
 jobStruct runningJob;
 bool jobActive = false;
 
+// Logging variables
+static const unsigned long LOG_THROTTLE_MS = 0; // 0ms due to delivery lost // 200ms minimal interval between log messages in ms
+static unsigned long lastLogMillis = 0;
+volatile bool otaUpdating = false; // true if OTA update is in progress
+
 // Create asynchronous WebServer object on port 80
 AsyncWebServer server(80);
 
 // Create a asynchronous WebSocket object
 AsyncWebSocket ws("/ws");
+
+// Initialize function prototypes
+void initializePins() {
+    // Reset existing valve pins
+    for(const auto& pin : valvePins) {
+        digitalWrite(pin, LOW);
+        pinMode(pin, INPUT);  // Reset to input to avoid floating
+    }
+
+    // Clear and resize vectors
+    valvePins.clear();
+    valve_switches.clear();
+    valveStates.clear();
+
+    // Resize arrays based on plant count
+    valvePins.resize(settings.plant_count);
+    valve_switches.resize(settings.plant_count, false);
+    valveStates.resize(settings.plant_count, 0);
+
+    // Initialize pins
+    for(uint8_t i = 0; i < settings.plant_count; i++) {
+        valvePins[i] = 25 + i;  // Starting from pin 25
+        
+        pinMode(valvePins[i], OUTPUT);
+        digitalWrite(valvePins[i], LOW);
+    }
+}
 
 // IRAM ATTR function to count pulses from the flow sensor
 // This function is called in the ISR when a pulse is detected
@@ -205,14 +279,65 @@ void initWiFi() {
     }
 }
 
+// Queue a message for WebSerial output
+void queueWebSerial(const char* message) {
+    if (!settings.use_webserial) return;
+    
+    // Queue voll? Älteste Nachricht entfernen
+    if (webSerialQueue.size() >= WEBSERIAL_QUEUE_SIZE) {
+        webSerialQueue.erase(webSerialQueue.begin());
+    }
+
+    WebSerialMessage msg;
+    strlcpy(msg.message, message, sizeof(msg.message));
+    
+    msg.timestamp = millis();
+    webSerialQueue.push_back(msg);
+}
+
+// Process the WebSerial message queue
+void processWebSerialQueue() {
+    if (!settings.use_webserial || webSerialQueue.empty()) return;
+    
+    unsigned long now = millis();
+    if (now - lastWebSerialFlush < WEBSERIAL_FLUSH_INTERVAL) return;
+
+    // Execute first message in queue
+    const WebSerialMessage& msg = webSerialQueue.front();
+    WebSerial.println(msg.message);
+    webSerialQueue.erase(webSerialQueue.begin());
+    lastWebSerialFlush = now;
+}
+
+// Simplified throttled logging function to Serial and WebSerial
+void logThrottled(const char* format, ...) {
+    unsigned long now = millis();
+    if (now - lastLogMillis < LOG_THROTTLE_MS) return;
+    lastLogMillis = now;
+
+    char buffer[192];
+    va_list args;
+    va_start(args, format);
+    vsnprintf(buffer, sizeof(buffer), format, args);
+    va_end(args);
+
+    // Print to Serial
+    Serial.println(buffer);
+
+    // Queue WebSerial message
+    if (settings.use_webserial) {
+        queueWebSerial(buffer);
+    }
+}
+
 // Message callback of WebSerial
 void recvMsg(uint8_t *data, size_t len){
-    WebSerial.println("Received Data...");
+    logThrottled("Received Data...");
     String d = "";
     for(int i=0; i < len; i++){
         d += char(data[i]);
     }
-    WebSerial.println(d);
+    logThrottled("%s", d.c_str());
 }
 
 // Prints the content of a file to the Serial
@@ -221,22 +346,22 @@ void printFile(const char *filename) {
     File file = LittleFS.open(filename);
 
     if (!file) {
-        Serial.println(F("Failed to read file"));
-        WebSerial.println(F("Failed to read file"));
-    return;
+        logThrottled("Failed to read file");
+        return;
     }
 
-    // Extract each characters by one by one
-    while (file.available()) {
-        Serial.print(F((char)file.read()));
-        WebSerial.print(F((char)file.read()));
-    }
-    
-    Serial.println();
-    WebSerial.println();
-
-    // Close the file
+    // Read entire file content into String
+    String content = file.readString();
     file.close();
+
+    // Check if we got any content
+    if (content.length() == 0) {
+        logThrottled("File is empty");
+        return;
+    }
+
+    // Log the entire content at once
+    logThrottled("%s", content.c_str());
 }
 
 // Loads the configuration from a file
@@ -245,30 +370,40 @@ void loadConfiguration(const char* configfile) {
         // Open file for reading
         File file = LittleFS.open(configfile, "r");
 
-        // Allocate a temporary JsonDocument
-        // Don't forget to change the capacity to match your requirements.
-        // Use arduinojson.org/v6/assistant to compute the capacity.
-        const uint8_t size = JSON_OBJECT_SIZE(4);
-        StaticJsonDocument<size> doc;
+        // Calculate proper JSON document size
+        const size_t capacity = JSON_OBJECT_SIZE(6) + 128; // Added buffer for strings
+        DynamicJsonDocument doc(capacity);
 
         // Deserialize the JSON document
         DeserializationError error = deserializeJson(doc, file);
-
-        // Close the file
         file.close();
 
         if (error) {
-            Serial.println(F("Failed to read configuration file, using default configuration"));
-            WebSerial.print(F("Failed to read configuration file, using default configuration\n"));
-        } else {
-            Serial.println(F("Successfully read configuration file, using saved configuration"));
-            WebSerial.print(F("Successfully read configuration file, using saved configuration\n"));
-
-            // Load settings from the JSON document
-            settings.use_webserial = doc["use_webserial"] | false;
-            settings.use_flowsensor = doc["use_flowsensor"] | false;
-            settings.use_moisturesensor = doc["use_moisturesensor"] | false;
+            logThrottled("Failed to read configuration file: %s", error.c_str());
+            return;
         }
+
+        // Load settings from the JSON document
+        settings.use_webserial = doc["use_webserial"] | false;
+        settings.use_flowsensor = doc["use_flowsensor"] | false;
+        settings.use_moisturesensor = doc["use_moisturesensor"] | false;
+        settings.auto_switch_enabled = doc["auto_switch_enabled"] | false;
+        settings.plant_count = doc["plant_count"] | 3;
+
+        // Update global auto_switch variable
+        if (settings.auto_switch_enabled) auto_switch = settings.auto_switch_enabled;
+
+        // Initialize pins with new settings
+        initializePins();
+
+        logThrottled("Configuration loaded - Plants: %d, WebSerial: %d, FlowSensor: %d, MoistureSensor: %d, AutoSwitch: %d",
+            settings.plant_count,
+            settings.use_webserial,
+            settings.use_flowsensor,
+            settings.use_moisturesensor,
+            settings.auto_switch_enabled);
+    } else {
+        logThrottled("No configuration file found, using defaults");
     }
 }
 
@@ -282,26 +417,26 @@ void saveConfiguration(const char* configfile) {
     // Open new file for writing
     File file = LittleFS.open(configfile, "w");
     if (!file) {
-        Serial.println(F("Failed to create configuration file"));
-        WebSerial.print(F("Failed to create configuration file\n"));
+        logThrottled("Failed to create configuration file");
         return;
     }
 
     // Allocate a temporary JsonDocument
     // Don't forget to change the capacity to match your requirements.
     // Use arduinojson.org/assistant to compute the capacity.
-    const uint8_t size = JSON_OBJECT_SIZE(4);
+    const uint8_t size = JSON_OBJECT_SIZE(6);
     StaticJsonDocument<size> doc;
 
     // Set settings values in JSON document
     doc["use_webserial"] = settings.use_webserial;
     doc["use_flowsensor"] = settings.use_flowsensor;
     doc["use_moisturesensor"] = settings.use_moisturesensor;
+    doc["auto_switch_enabled"] = settings.auto_switch_enabled;
+    doc["plant_count"] = settings.plant_count;
 
     // Serialize JSON to file
     if (serializeJson(doc, file) == 0) {
-        Serial.println(F("Failed to write to configuration file"));
-        WebSerial.print(F("Failed to write to configuration file\n"));
+        logThrottled("Failed to write to configuration file");
     }
 
     // Close the file
@@ -311,48 +446,46 @@ void saveConfiguration(const char* configfile) {
     printFile(configfile);
 }
 
-int countJsonObjectsInFile(const char* filename) {
-    File file = LittleFS.open(filename, "r");
-    if (!file) return 0;
-    int count = 0;
-    while (file.available()) {
-        char c = file.read();
-        if (c == '{') count++;
-    }
-    file.close();
-    return count;
-}
-
 // Loads the job schedules from a file
 void loadJobList(const char* jobsfile) {
-    int jobCount = countJsonObjectsInFile(jobsfile);
-
-    if (jobCount == 0) {
-        Serial.println(F("No jobs found or file error"));
-        WebSerial.print(F("No jobs found or file error\n"));
+    if (!LittleFS.exists(jobsfile)) {
+        logThrottled("Jobs file '%s' does not exist", jobsfile);
         return;
     }
 
-    // Get xapacity based on job count
-    const size_t capacity = JSON_ARRAY_SIZE(jobCount) + jobCount * JSON_OBJECT_SIZE(8);
-    //StaticJsonDocument<2048> doc;
-    DynamicJsonDocument doc(capacity); // Use DynamicJsonDocument for runtime capacity
-
     File file = LittleFS.open(jobsfile, "r");
-    DeserializationError error = deserializeJson(doc, file);
+    if (!file) {
+        logThrottled("Failed to open jobs file for validation: %s", jobsfile);
+        return;
+    }
+
+    // Read full content
+    String content = file.readString();
     file.close();
 
-    if (error) {
-        Serial.println(F("Failed to read job schedules file, using default job schedules"));
-        Serial.println(error.c_str());
-        WebSerial.print(F("Failed to read job schedules file, using default job schedules\n"));
-        WebSerial.println(error.c_str());
+    if (content.length() == 0) {
+        logThrottled("Jobs file '%s' is empty", jobsfile);
         return;
-    } else {
-        Serial.println(F("Successfully read job schedules file, using saved job schedules"));
-        WebSerial.print(F("Successfully read job schedules file, using saved job schedules\n"));
+    }
 
-        // Assume: File contains a JSON-Array at top level
+    // Provide a reasonable dynamic capacity based on file size (bounded)
+    size_t cap = (size_t)content.length() * 2 + 1024;
+    const size_t CAP_MAX = 64 * 1024; // cap to 64KB to avoid huge allocations
+    if (cap > CAP_MAX) cap = CAP_MAX;
+
+    DynamicJsonDocument doc(cap);
+    DeserializationError err = deserializeJson(doc, content);
+
+    if (err) {
+        logThrottled("Invalid JSON in jobs file '%s': %s", jobsfile, err.c_str());
+        return;
+    }
+
+    // If already an array -> OK
+    if (doc.is<JsonArray>()) {
+        logThrottled("Jobs file '%s' already top-level array", jobsfile);
+
+        // File contains a JSON-Array at top level
         JsonArray arr = doc.as<JsonArray>();
         joblistVec.clear();
 
@@ -369,8 +502,7 @@ void loadJobList(const char* jobsfile) {
             joblistVec.push_back(job);
         }
 
-        Serial.printf("Loaded %d jobs\n", joblistVec.size());
-        WebSerial.printf("Loaded %d jobs\n", joblistVec.size());
+        logThrottled("Loaded %d job(s)", joblistVec.size());
     }
 }
 
@@ -378,32 +510,50 @@ void loadJobList(const char* jobsfile) {
 void handleSaveJobList(const char* jobsfile) {
     if (LittleFS.exists(jobsfile)) {
         // Delete existing file
-        LittleFS.remove(jobsfile);
+        if (!LittleFS.remove(jobsfile)) {
+            logThrottled("Failed to remove existing jobs file");
+            return;
+        }
     }
 
     // Open file for writing
     File file = LittleFS.open(jobsfile, "w");
     if (!file) {
-        Serial.println(F("Failed to create job schedules file"));
-        WebSerial.print(F("Failed to create job schedules file\n"));
+        logThrottled("Failed to create job schedules file");
         return;
     }
 
     // Get joblistVec array length
     int joblen = joblistVec.size();
+    if (joblen == 0) {
+        logThrottled("No jobs to save");
+        file.close();
+        return;
+    }
 
     // Allocate a temporary JsonDocument
     // Don't forget to change the capacity to match your requirements.
     // Use arduinojson.org/assistant to compute the capacity.
-    const size_t size = JSON_ARRAY_SIZE(joblen) + joblen*JSON_OBJECT_SIZE(8);
-    DynamicJsonDocument doc(size); // Use DynamicJsonDocument for runtime capacity
-
+    const size_t capacity = JSON_ARRAY_SIZE(joblen) + 
+                          (joblen * JSON_OBJECT_SIZE(8)) + // 8 properties per job
+                          (joblen * 128); // Extra space for strings in each job
+    
+    // Use DynamicJsonDocument for runtime capacity
+    DynamicJsonDocument doc(capacity);
     // convert joblistVec to JSON array
     JsonArray joblistArray = doc.to<JsonArray>();
-    
-    // Iterate through the joblistVec and add each job to the dynamic JSON array
-    for (const jobStruct& job : joblistVec) {
-        JsonObject obj = joblistArray.add();
+    // Log the size of the document
+    logThrottled("Preparing to save %d jobs with capacity %d bytes", joblen, capacity);
+
+    // Iterate through the joblistVec and add each job to the JSON array
+    for (size_t i = 0; i < joblen; i++) {
+        const jobStruct& job = joblistVec[i];
+        JsonObject obj = joblistArray.createNestedObject();
+        
+        // Debug output for each job
+        logThrottled("Processing job %d: %s", i, job.name);
+
+        // Add all job properties
         obj["id"] = job.id;
         obj["active"] = job.active;
         obj["name"] = job.name;
@@ -414,51 +564,59 @@ void handleSaveJobList(const char* jobsfile) {
         obj["everyday"] = job.everyday;
     }
 
-    // Clear jobListVec to prevent duplicate entries
-    //joblistVec.clear();
-
     // Serialize JSON to file
-    if (serializeJson(doc, file) == 0) {
-        Serial.println(F("Failed to write to job schedules file"));
-        WebSerial.print(F("Failed to write to job schedules file\n"));
-    }
-
-    // Close the file
+    size_t bytesWritten = serializeJson(doc, file);
     file.close();
 
-    // Debug: Print file data
+    if (bytesWritten == 0) {
+        logThrottled("Failed to write jobs to file");
+        return;
+    }
+
+    logThrottled("Successfully saved %d jobs (%d bytes)", joblen, bytesWritten);
     printFile(jobsfile);
 }
 
 void handleGetData() {
+    // Add safety checks
+    if (valvePins.empty() || valve_switches.empty() || valveStates.empty()) {
+        logThrottled("Error: Valve arrays not initialized");
+        return;
+    }
+
     String Text;
+    
+    const size_t capacity = JSON_OBJECT_SIZE(4) + 
+                           JSON_ARRAY_SIZE(settings.plant_count) + 
+                           settings.plant_count * JSON_OBJECT_SIZE(2) + 
+                           128;
+    DynamicJsonDocument root(capacity);
 
-    const uint8_t size = JSON_OBJECT_SIZE(9);
-    StaticJsonDocument<size> root;
-
-    // Set action for the JSON object
     root["action"] = "setvalues";
-
-    // Fill JSON object with values
     root["auto_switch"] = auto_switch;
-    root["valve_switch_1"] = valve_switch_1;
-    root["valve_switch_2"] = valve_switch_2;
-    root["valve_switch_3"] = valve_switch_3;
-
     root["pump_switch"] = pump_switch;
     root["pumpRunTime"] = String(pumpRunTime, 2);
 
-    root["soilFlowVolume"] = String(roundSoilFlowVolume, 3);
+    // Add valve states array
+    JsonArray valveArray = root.createNestedArray("valves");
+    for(uint8_t i = 0; i < settings.plant_count && i < valve_switches.size(); i++) {
+        JsonObject valve = valveArray.createNestedObject();
+        valve["id"] = i + 1;
+        valve["state"] = bool(valve_switches[i]); // Explicitly convert to bool
+    }
+
+    if (settings.use_flowsensor) {
+        root["soilFlowVolume"] = String(roundSoilFlowVolume, 3);
+    }
 
     serializeJson(root, Text);
-
     ws.textAll(Text); // Send sensors values to websocket clients
 }
 
 void handleGetSettings() {
     String Text;
 
-    const uint8_t size = JSON_OBJECT_SIZE(5);
+    const uint8_t size = JSON_OBJECT_SIZE(7);
     StaticJsonDocument<size> json;
 
     // Clear the JSON object
@@ -471,6 +629,8 @@ void handleGetSettings() {
     json["use_webserial"] = settings.use_webserial;
     json["use_flowsensor"] = settings.use_flowsensor;
     json["use_moisturesensor"] = settings.use_moisturesensor;
+    json["auto_switch_enabled"] = settings.auto_switch_enabled;
+    json["plant_count"] = settings.plant_count;
 
     serializeJson(json, Text);
 
@@ -484,38 +644,52 @@ void handleSaveSettings(const JsonDocument& json) {
     settings.use_webserial = json["use_webserial"] | false;
     settings.use_flowsensor = json["use_flowsensor"] | false;
     settings.use_moisturesensor = json["use_moisturesensor"] | false;
+    settings.auto_switch_enabled = json["auto_switch_enabled"] | false;
+    
+    // Update global auto_switch state
+    if (settings.auto_switch_enabled) auto_switch = settings.auto_switch_enabled;
+    
+    // Handle plant count changes
+    uint8_t new_count = json["plant_count"] | 3;
+    if (new_count != settings.plant_count) {
+        settings.plant_count = new_count;
+        initializePins();  // Reinitialize with new count
+    }
 
     saveConfiguration(configfile);
-
-    //serializeJson(json, Text);
-
-    //ws.textAll(Text);
+    // Send updated settings to websocket clients
+    handleGetSettings();
 }
 
 void handleGetJobList() {
-    // Create a JSON document from joblist array and send it to the client
-    String Text;
-    int arrayCount = 1;
-
-    // Check if joblistVec is not empty
-    // If it is empty, we will still create a JSON array with one empty object
-    // This ensures that the JSON structure is always valid
-    if (!joblistVec.empty()) {
-        arrayCount = joblistVec.size();
-    }
-
-    // Create a JSON document with a size based on the number of jobs
-    const size_t size = JSON_ARRAY_SIZE(arrayCount) + 
-                        (arrayCount * JSON_OBJECT_SIZE(8)) + 
-                        (1 * JSON_OBJECT_SIZE(3));
-    DynamicJsonDocument doc(size); // Use DynamicJsonDocument for runtime capacity
+    // Calculate capacity for the entire document including action and joblist wrapper
+    int arrayCount = joblistVec.empty() ? 1 : joblistVec.size();
     
-    // Create a JSON array in the document
-    JsonArray joblistArray = doc.to<JsonArray>();
+    const size_t capacity = JSON_OBJECT_SIZE(2) +           // Main object with 2 properties (action, joblist)
+                           JSON_ARRAY_SIZE(arrayCount) +    // Array size
+                           (arrayCount * JSON_OBJECT_SIZE(8)) + // 8 properties per job
+                           (arrayCount * 128);              // Extra space for strings
     
-    // Iterate through the joblistVec and add each job to the dynamic JSON array
-    for (const jobStruct& job : joblistVec) {
-        JsonObject obj = joblistArray.add();
+    DynamicJsonDocument doc(capacity);
+    
+    // Add action property
+    doc["action"] = "setjoblist";
+    
+    // Create joblist array
+    JsonArray joblistArray = doc.createNestedArray("joblist");
+    
+    // Debug output
+    logThrottled("Preparing to load %d job(s) with capacity %d bytes", arrayCount, capacity);
+
+    // Iterate through the joblistVec and add each job to the JSON array
+    for (size_t i = 0; i < arrayCount && i < joblistVec.size(); i++) {
+        const jobStruct& job = joblistVec[i];
+        JsonObject obj = joblistArray.createNestedObject();
+        
+        // Debug output for each job
+        logThrottled("Processing job %d: %s", i, job.name);
+
+        // Add all job properties
         obj["id"] = job.id;
         obj["active"] = job.active;
         obj["name"] = job.name;
@@ -525,17 +699,27 @@ void handleGetJobList() {
         obj["starttime"] = job.starttime;
         obj["everyday"] = job.everyday;
     }
-    // Set action for the JSON object
-    doc["action"] = "setjoblist";
-    
-    // Set joblist array in the JSON document
-    doc["joblist"] = joblistArray;
 
-    // Serialize the JSON document to a string
+    String Text;
     serializeJson(doc, Text);
+    ws.textAll(Text); // Send joblist to websocket clients
+}
 
-    // Send the JSON string to all WebSocket clients
-    ws.textAll(Text);
+// Delete the jobs file
+void handleDeleteJobList(const char* jobsfile) {
+    if (!LittleFS.exists(jobsfile)) {
+        logThrottled("Jobs file does not exist");
+        return;
+    }
+
+    if (!LittleFS.remove(jobsfile)) {
+        logThrottled("Failed to delete jobs file");
+        return;
+    }
+
+    logThrottled("Deleted jobs file");
+    joblistVec.clear();
+    handleGetJobList();
 }
 
 void handleAddJobToList(const JsonDocument& json) {
@@ -543,20 +727,30 @@ void handleAddJobToList(const JsonDocument& json) {
     jobStruct newJob;
 
     // Check if job ID already exists
+    int newId = json["id"] | -1;
+    if (newId < 0) {
+        logThrottled("Invalid job id, skipping");
+        return;
+    }
+
+    // If job ID is first element (0), clear existing job list
+    if (newId == 0) {
+        logThrottled("First job id, clearing existing job list");
+        joblistVec.clear();
+    }
+
     for (const jobStruct& job : joblistVec) {
-        if (job.id == json["id"]) {
-            Serial.println(F("Job ID already exists, not adding to job list"));
-            WebSerial.print(F("Job ID already exists, not adding to job list\n"));
+        if (job.id == newId) {
+            logThrottled("Job ID already exists, not adding to job list");
             return; // Exit if job ID already exists
         }
     }
 
     // If job ID does not exist, proceed to add new job
-    Serial.println(F("Adding new job to job list"));
-    WebSerial.print(F("Adding new job to job list\n"));
+    logThrottled("Adding new job to job list");
 
     // Add new job to joblistVec from JSON data
-    newJob.id = json["id"] | 0;
+    newJob.id = newId;
     newJob.active = json["active"] | false;
     strlcpy(newJob.name, json["name"] | "", sizeof(newJob.name));
     strlcpy(newJob.job, json["job"] | "", sizeof(newJob.job));
@@ -565,6 +759,18 @@ void handleAddJobToList(const JsonDocument& json) {
     strlcpy(newJob.starttime, json["starttime"] | "", sizeof(newJob.starttime));
     newJob.everyday = json["everyday"] | false;
     joblistVec.push_back(newJob);
+
+    // Log new added job to logThrottled
+    logThrottled("New Job - ID: %d, Active: %d, Name: %s, Job: %s, Plant: %s, Duration: %d, Starttime: %s, Everyday: %d",
+        newJob.id,
+        newJob.active,
+        newJob.name,
+        newJob.job,
+        newJob.plant,
+        newJob.duration,
+        newJob.starttime,
+        newJob.everyday
+    );
 }
 
 void notifyClients() {
@@ -572,97 +778,132 @@ void notifyClients() {
 }
 
 void handleAutoSwitch() {
-    if (auto_switch) {
-        auto_switch = false;
-        Serial.println("Auto Off");
-        WebSerial.print(F("Auto Off\n"));
-    } else {
-        auto_switch = true;
-        Serial.println("Auto On");
-        WebSerial.print(F("Auto Off\n"));
-    }
+    auto_switch = !auto_switch;
+
+    //saveConfiguration(configfile);  // Save to file
+    logThrottled("Auto %s", auto_switch ? "On" : "Off");
 
     notifyClients();
 }
 
-void handleValveSwitch(int valveNum) {
-    int* valvePin;
-    bool* valve_switch;
-    int* valveState;
-
-    // Set pointers based on valve number
-    switch (valveNum) {
-        case 1:
-            valvePin = &valvePin_1;
-            valve_switch = &valve_switch_1;
-            valveState = &valve1State;
-            break;
-        case 2:
-            valvePin = &valvePin_2;
-            valve_switch = &valve_switch_2;
-            valveState = &valve2State;
-            break;
-        case 3:
-            valvePin = &valvePin_3;
-            valve_switch = &valve_switch_3;
-            valveState = &valve3State;
-            break;
-        default:
-            Serial.println("Invalid valve number!");
-            WebSerial.print(F("Invalid valve number!\n"));
-            return;
+void handleValveSwitch(uint8_t valveNum) {
+    if (valveNum >= settings.plant_count) {
+        logThrottled("Invalid valve number: %d", valveNum);
+        return;
     }
-
-    if (*valve_switch) {
-        // Close valve only if pump isn't running
-        if (pumpState == LOW) {
-            digitalWrite(*valvePin, LOW);
-            *valve_switch = false;
-            Serial.printf("Valve Switch %d closed\n", valveNum);
-            WebSerial.printf("Valve Switch %d closed\n", valveNum);
+    
+    bool currentState = valve_switches[valveNum];
+    if (currentState) {
+        // Only close if pump is not running
+        if (pumpCtx.state != PUMP_RUNNING) {
+            digitalWrite(valvePins[valveNum], LOW);
+            valve_switches[valveNum] = false;
+            valveStates[valveNum] = LOW;
+            logThrottled("Valve %d closed", valveNum + 1);
+        } else {
+            logThrottled("Cannot close valve %d - pump is running", valveNum + 1);
         }
     } else {
-        digitalWrite(*valvePin, HIGH);
-        *valve_switch = true;
-        Serial.printf("Valve Switch %d open\n", valveNum);
-        WebSerial.printf("Valve Switch %d open\n", valveNum);
+        digitalWrite(valvePins[valveNum], HIGH);
+        valve_switches[valveNum] = true;
+        valveStates[valveNum] = HIGH;
+        logThrottled("Valve %d opened", valveNum + 1);
     }
-
-    *valveState = digitalRead(*valvePin);
 
     notifyClients();
 }
 
-void handlePumpSwitch() {
-    if (pump_switch) {
-        // Turn off water pump
-        digitalWrite(pumpPin, LOW);
-        pump_switch = false;
-        Serial.println("Pump Switch closed");
-        WebSerial.print(F("Pump Switch closed\n"));
-    } else {
-        // Start pump only if one of valve 1-3 is open
-        if (valve1State == HIGH || valve2State == HIGH || valve3State == HIGH) {
-            // Turn on water pump
-            digitalWrite(pumpPin, HIGH);
-            pump_switch = true;
-            
-            if (pumpRunTime == 0) {
-                pumpStartTime = millis();
+void handlePumpSwitch(bool manual = true) {
+    unsigned long now = millis();
+    bool stateChanged = false;
+    bool anyValveOpen = false;
+
+    // Handle manual toggle from frontend
+    if (manual) {
+        pumpCtx.manualControl = true;
+        pumpCtx.targetState = !pump_switch;
+        
+        // Force immediate stop if turning off manually
+        if (!pumpCtx.targetState) {
+            pumpCtx.state = PUMP_STOPPING;
+        } 
+        // Only allow start if in IDLE state
+        else if (pumpCtx.state == PUMP_IDLE) {
+            pumpCtx.state = PUMP_STARTING;
+        }
+        pumpCtx.stateTime = now;
+    }
+
+    // State machine
+    switch (pumpCtx.state) {
+        case PUMP_IDLE:
+            // Wait for commands
+            break;
+
+        case PUMP_STARTING:
+            // Check if any valve is open
+            anyValveOpen = false;  // Reset flag
+            for(uint8_t i = 0; i < settings.plant_count; i++) {
+                if (valveStates[i] == HIGH) {
+                    anyValveOpen = true;
+                    break;
+                }
+            }
+            // Check if at least one valve is open before starting pump
+            if (anyValveOpen) {
+                digitalWrite(pumpPin, HIGH);
+                pump_switch = true;
+                pumpCtx.state = PUMP_RUNNING;
+
+                pumpStartTime = now;
+                pumpStartMillis = now;
+                
+                logThrottled("Pump starting %s", pumpCtx.manualControl ? "(manual)" : "(auto)");
+                stateChanged = true;
             } else {
-                pumpTimeNow = millis();
-                pumpStartTime = pumpTimeNow - pumpRunTime;
+                logThrottled("Cannot start pump - no valve open");
+                pumpCtx.state = PUMP_IDLE;
+
+                pump_switch = false;  // Ensure switch shows correct state
+                stateChanged = true;
+            }
+            break;
+
+        case PUMP_RUNNING:
+            if (!pumpCtx.targetState) {
+                pumpCtx.state = PUMP_STOPPING;
+                pumpCtx.stateTime = now;
             }
 
-            Serial.println("Pump Switch open");
-            WebSerial.print(F("Pump Switch open\n"));
-        }
+            // Update runtime while running
+            pumpRunTime = (now - pumpStartMillis) / 1000.0f;
+            break;
+
+        case PUMP_STOPPING:
+            digitalWrite(pumpPin, LOW);
+            pump_switch = false;
+            pumpCtx.state = PUMP_IDLE;
+
+            // Final runtime calculation
+            pumpRunTime = (now - pumpStartMillis) / 1000.0f;
+            logThrottled("Pump stopping %s after %.1f seconds", 
+                pumpCtx.manualControl ? "(manual)" : "(auto)",
+                pumpRunTime);
+            stateChanged = true;
+            break;
     }
 
-    // Read the state of the pump pin value
-    pumpState = digitalRead(pumpPin);
-
-    notifyClients();
+    // Update pump state and notify if changed
+    if (stateChanged) {
+        pumpState = digitalRead(pumpPin);
+        if (!pump_switch) {
+            if (!manual) {
+                pumpRunTime = 0;  // Reset runtime when pump stops
+                pumpStartMillis = 0;
+            }
+        }
+        notifyClients();
+    }
 }
 
 void handleResetCounter() {
@@ -674,6 +915,7 @@ void handleResetCounter() {
 
     pumpStartTime = 0;
     pumpRunTime = 0;
+    pumpStartMillis = 0;
 
     notifyClients();
 }
@@ -688,55 +930,59 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
         DeserializationError err = deserializeJson(json, data);
 
         if (err) {
-            Serial.print(F("deserializeJson() failed with code "));
-            Serial.println(err.c_str());
-            WebSerial.print(F("deserializeJson() failed with code "));
-            WebSerial.println(err.c_str());
+            logThrottled("deserializeJson() failed with code %s", err.c_str());
             return;
         }
 
-        act = json["action"];
-        action = act;
+        // copy action string; avoid pointer to JsonDocument internals
+        const char* tmpAct = json["action"] | "";
+        action = String(tmpAct);
 
-        Serial.print("action: ");
-        Serial.println(action);
-        WebSerial.print(F("action: "));
-        WebSerial.println(action);
+        logThrottled("action: %s", action.c_str());
 
         if (action == "getvalues") handleGetData();
         else if (action == "getsettings") handleGetSettings();
-        else if (action == "savesettings") handleSaveSettings(json);
         else if (action == "getjoblist") handleGetJobList();
+        else if (action == "savesettings") handleSaveSettings(json);
         else if (action == "addjobtolist") handleAddJobToList(json);
         else if (action == "savejoblist") handleSaveJobList(jobsfile);
+        else if (action == "deletejoblist") handleDeleteJobList(jobsfile);
         else if (action == "resetcounter") handleResetCounter();
         else if (action == "auto_switch") handleAutoSwitch();
-        else if (action == "valve_switch_1") handleValveSwitch(1); // Switch for valve 1
-        else if (action == "valve_switch_2") handleValveSwitch(2); // Switch for valve 2
-        else if (action == "valve_switch_3") handleValveSwitch(3); // Switch for valve 3
-        else if (action == "pump_switch") handlePumpSwitch();
+        else if (action == "pump_switch") handlePumpSwitch(true);
+        else if (action == "valve_switch") {
+            // Parse valve ID and state
+            int valveId = json["valve_id"].as<int>();
+            if (valveId > 0 && valveId <= settings.plant_count) {
+                handleValveSwitch(valveId - 1);  // Convert to 0-based index
+            }
+        } else {
+            // Should not happen
+            logThrottled("Unknown action: %s", action.c_str());
+        }
     }
 }
 
-void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len) {
+void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len) {
     switch (type) {
         case WS_EVT_CONNECT:
-            Serial.printf("WebSocket client #%u connected from %s\n", client->id(), client->remoteIP().toString().c_str());
+            logThrottled("WebSocket client #%u connected from %s", client->id(), client->remoteIP().toString().c_str());
         break;
         case WS_EVT_DISCONNECT:
-            Serial.printf("WebSocket client #%u disconnected\n", client->id());
+            logThrottled("WebSocket client #%u disconnected", client->id());
         break;
         case WS_EVT_DATA:
             handleWebSocketMessage(arg, data, len);
         break;
         case WS_EVT_PONG:
         case WS_EVT_ERROR:
+            logThrottled("WebSocket error: client #%u, error: %s", client->id(), (char*)data);
         break;
     }
 }
 
 void initWebSocket() {
-    ws.onEvent(onEvent);
+    ws.onEvent(onWsEvent);
     server.addHandler(&ws);
 }
 
@@ -750,7 +996,7 @@ void handleNotFound(AsyncWebServerRequest *request) {
 
 void calculateSoilFlowRate() {
     // Calculate Soil Flowrate
-    detachInterrupt(soilFlowSensorPin);
+    detachInterrupt(digitalPinToInterrupt(soilFlowSensorPin));
     soilFlowRate = ((1000.0 / (millis() - lastTime)) * pulseCount) / 7.5; // L/min
     soilFlowVolume += (soilFlowRate / 60.0); // Convert to liters
     roundSoilFlowVolume = round(soilFlowVolume*100)/100;
@@ -878,85 +1124,246 @@ void calculateSoilFlowRate() {
     }
 }*/
 
-void syncTime() {
-    Serial.print("Synchronizing time with NTP server...");
-    WebSerial.print(F("Synchronizing time with NTP server..."));
-
-    configTime(0, 0, "fritz.box", "pool.ntp.org", "time.nist.gov"); // UTC offset set to 0
-    time_t now = time(nullptr);
+void handleNTPSync() {
+    if (otaUpdating || jobActive) return;
     
-    while (now < 24 * 3600) { // Wait until time is valid
-        delay(100);
-        now = time(nullptr);
+    unsigned long now = millis();
+    
+    switch(ntpCtx.state) {
+        case NTP_IDLE:
+            if (now - ntpCtx.lastSync >= ntpSyncInterval) {
+                ntpCtx.state = NTP_INIT;
+                ntpCtx.stateTime = now;
+                ntpCtx.syncInProgress = true;
+                ntpCtx.retryCount = 0;
+                logThrottled("Starting NTP sync...");
+            }
+            break;
+            
+        case NTP_INIT:
+            logThrottled("Configuring NTP...");
+            configTime(gmtOffset_sec, daylightOffset_sec, ntpServer1, ntpServer2, ntpServer3);
+            ntpCtx.state = NTP_WAITING;
+            ntpCtx.stateTime = now;
+            break;
+            
+        case NTP_WAITING: {
+            static unsigned long lastNTPWaitLog = 0;
+            time_t timeNow = time(nullptr);
+
+            // Only log waiting message every NTP_WAIT_LOG_INTERVAL
+            if (now - lastNTPWaitLog >= NTP_WAIT_LOG_INTERVAL) {
+                logThrottled("Waiting for valid time... Current: %ld", (long)timeNow);
+                lastNTPWaitLog = now;
+            }
+
+            if (timeNow > 24 * 3600) {
+                // Valid time received
+                struct tm timeinfo;
+                localtime_r(&timeNow, &timeinfo);
+                setenv("TZ", timezone, 1);
+                tzset();
+                ntpCtx.state = NTP_DONE;
+                ntpCtx.lastSync = now;
+                ntpCtx.syncInProgress = false;
+                logThrottled("NTP sync complete - Time set to: %04d-%02d-%02d %02d:%02d:%02d",
+                    timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday,
+                    timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+            } else {
+                // Timeout after 10 seconds
+                if (now - ntpCtx.stateTime > 10000) {
+                    if (++ntpCtx.retryCount >= 3) {
+                        // Give up after 3 retries
+                        ntpCtx.state = NTP_IDLE;
+                        ntpCtx.syncInProgress = false;
+                        logThrottled("NTP sync failed after 3 retries");
+                    } else {
+                        // Retry
+                        ntpCtx.state = NTP_INIT;
+                        logThrottled("NTP sync retry %d/3", ntpCtx.retryCount);
+                    }
+                }
+            }
+            break;
+        }
+            
+        case NTP_DONE:
+            ntpCtx.state = NTP_IDLE;
+            break;
     }
-    Serial.println(" Time synchronized!");
-    WebSerial.print(F(" Time synchronized!\n"));
-
-    // Set timezone
-    setenv("TZ", timezone, 1);
-    tzset();
-
-    lastNTPUpdate = millis(); // Record the time of the last sync
 }
 
 // Helper function to parse job start time from string
 jobDateTime parseJobDateTime(const char* starttime) {
-    jobDateTime dt;
-    // Expect format: "YYYY-MM-DDTHH:MM"
-    dt.year   = atoi(String(starttime).substring(0, 4).c_str());
-    dt.month  = atoi(String(starttime).substring(5, 7).c_str());
-    dt.day    = atoi(String(starttime).substring(8, 10).c_str());
-    dt.hour   = atoi(String(starttime).substring(11, 13).c_str());
-    dt.minute = atoi(String(starttime).substring(14, 16).c_str());
+    jobDateTime dt = {0,0,0,0,0,false,false};
+    if (starttime == nullptr || starttime[0] == '\0') return dt;
+
+    // Try full ISO-like datetime "YYYY-MM-DDTHH:MM"
+    int year=0, month=0, day=0, hour=0, minute=0;
+    int matched;
+
+    // Try full datetime with both separators (space or T)
+    matched = sscanf(starttime, "%4d-%2d-%2d%*[T ]%2d:%2d", &year, &month, &day, &hour, &minute);
+    
+    if (matched == 5) {
+        /*logThrottled("Parsed one-time job: %04d-%02d-%02d %02d:%02d", 
+            year, month, day, hour, minute);*/
+            
+        if (year >= 1970 && month >= 1 && month <= 12 && 
+            day >= 1 && day <= 31 && 
+            hour >= 0 && hour <= 23 && 
+            minute >= 0 && minute <= 59) {
+            dt.year = year;
+            dt.month = month;
+            dt.day = day;
+            dt.hour = hour;
+            dt.minute = minute;
+            dt.valid = true;
+            dt.timeOnly = false;
+            return dt;
+        }
+        logThrottled("Invalid date/time ranges in one-time job");
+        return dt;
+    }
+
+    // Try time-only format (HH:MM)
+    matched = sscanf(starttime, "%2d:%2d", &hour, &minute);
+    if (matched == 2) {
+        //logThrottled("Parsed everyday job: %02d:%02d", hour, minute);
+            
+        if (hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59) {
+            dt.hour = hour;
+            dt.minute = minute;
+            dt.valid = true;
+            dt.timeOnly = true;
+            return dt;
+        }
+        logThrottled("Invalid time ranges in everyday job");
+        return dt;
+    }
+
+    logThrottled("Failed to parse datetime: %s", starttime);
     return dt;
 }
 
 // This function will be called when a job is due to run
 // Start job (without delay!)
 void processJob(const jobStruct& job) {
-    if (pumpState == LOW && !jobActive) {
-        runningJob = job;
-        currentJobState = JOB_OPEN_VALVE;
-        jobStateTimestamp = millis();
-        jobActive = true;
-        Serial.printf("Start background job: %s for plant: %s\n", job.job, job.plant);
-        WebSerial.printf("Start background job: %s for plant: %s\n", job.job, job.plant);
+    // guard: only one job at a time and pump must be free
+    if (jobActive) {
+        logThrottled("Another job is active, skipping start");
+        return;
     }
+    // copy job and start state machine
+    runningJob = job;
+    currentJobState = JOB_OPEN_VALVE;
+    jobStateTimestamp = millis();
+    jobActive = true;
+    logThrottled("Start background job: %s for plant: %s\n", job.job, job.plant);
 }
 
 // This function processes the jobs based on the joblistVec
-// It checks the current time against the job start times and executes jobs that are due
-// It supports both daily jobs and one-time jobs based on the job's start time
+// Fine control: startWindowSec defines a time window to start the job on time
+// No OTA updates or other jobs should be active when starting a job
 void jobsProcessor() {
-    // Process jobs based on the joblistVec
-    time_t now = time(nullptr);
+    static int lastCheckedSecond = -1;
+    static int lastExecutedJobId = -1;
+    static unsigned long lastJobStartTime = 0;
+    const int startWindowSec = 30;
+
+    time_t now_t = time(nullptr);
     struct tm timeinfo;
-    localtime_r(&now, &timeinfo);
+    localtime_r(&now_t, &timeinfo);
 
-    // Iterate through the joblistVec to check for jobs to run
+    // Check every second instead of every minute
+    int currentSecond = timeinfo.tm_hour * 3600 + timeinfo.tm_min * 60 + timeinfo.tm_sec;
+    if (currentSecond == lastCheckedSecond) return;
+    lastCheckedSecond = currentSecond;
+
+    // Reset at midnight
+    if (timeinfo.tm_hour == 0 && timeinfo.tm_min == 0 && timeinfo.tm_sec == 0) {
+        lastExecutedJobId = -1;
+    }
+
+    if (otaUpdating) {
+        logThrottled("OTA in progress - skipping job evaluation");
+        return;
+    }
+
+    unsigned long now = millis();
+    // Prevent re-execution within 60 seconds
+    if (now - lastJobStartTime < 60000) {
+        return;
+    }
+
     for (const jobStruct& job : joblistVec) {
-        if (job.active) {
-            jobDateTime dt = parseJobDateTime(job.starttime);
+        if (job.id == lastExecutedJobId) continue;
+        if (!job.active || job.starttime[0] == '\0') continue;
 
-            // Check if the job is set to run every day or on a specific date and time
-            // Compare time based on the job's everyday flag
-            if (job.everyday) {
-                if (timeinfo.tm_hour == dt.hour && timeinfo.tm_min == dt.minute) {
-                    // Execute job
-                    processJob(job);
-                }
-            } else {
-                // Compare date/time for one-time jobs
-                // Check if the current date and time matches the job's scheduled date and time
-                if ((timeinfo.tm_year + 1900 == dt.year) &&
-                    (timeinfo.tm_mon + 1 == dt.month) &&
-                    (timeinfo.tm_mday == dt.day) &&
-                    (timeinfo.tm_hour == dt.hour) &&
-                    (timeinfo.tm_min == dt.minute)) {
-                    // Execute job
-                    processJob(job);
+        jobDateTime dt = parseJobDateTime(job.starttime);
+        if (!dt.valid) continue;
+
+        bool shouldStart = false;
+        if (job.everyday || dt.timeOnly) {
+            int jobSecondsOfDay = dt.hour * 3600 + dt.minute * 60;
+            int diff = currentSecond - jobSecondsOfDay;
+            if (diff < 0) diff = -diff;
+            
+            /*logThrottled("Job %d time diff: %d seconds (window: %d)", 
+                job.id, diff, startWindowSec);*/
+                
+            if (diff <= startWindowSec) shouldStart = true;
+        } else {
+            // One-time job handling
+            struct tm jobtm = {0};
+            jobtm.tm_year = dt.year - 1900;
+            jobtm.tm_mon = dt.month - 1;
+            jobtm.tm_mday = dt.day;
+            jobtm.tm_hour = dt.hour;
+            jobtm.tm_min = dt.minute;
+            jobtm.tm_sec = 0;
+            time_t jobEpoch = mktime(&jobtm);
+            
+            struct tm currenttm;
+            localtime_r(&now_t, &currenttm);
+            
+            if (jobEpoch != (time_t)-1) {
+                // Compare year, month, day
+                if (currenttm.tm_year == (dt.year - 1900) &&
+                    currenttm.tm_mon == (dt.month - 1) &&
+                    currenttm.tm_mday == dt.day) {
+                    
+                    // If date matches, check time within window
+                    int jobSecondsOfDay = dt.hour * 3600 + dt.minute * 60;
+                    int currentSecondsOfDay = currenttm.tm_hour * 3600 + 
+                                            currenttm.tm_min * 60 + 
+                                            currenttm.tm_sec;
+                    int diff = currentSecondsOfDay - jobSecondsOfDay;
+                    if (diff < 0) diff = -diff;
+                    
+                    logThrottled("One-time job %d date matched, time diff: %d seconds", 
+                        job.id, diff);
+                        
+                    if (diff <= startWindowSec) {
+                        shouldStart = true;
+                    }
                 }
             }
+        }
+
+        if (shouldStart) {
+            logThrottled("Job %d scheduled for %02d:%02d:%02d should start now", 
+                job.id, dt.hour, dt.minute, timeinfo.tm_sec);
+
+            if (jobActive) {
+                logThrottled("Job %d due but another job active - skipping", job.id);
+                continue;
+            }
+
+            processJob(job);
+            lastExecutedJobId = job.id;
+            lastJobStartTime = now;
+            break;
         }
     }
 }
@@ -965,56 +1372,109 @@ void jobsProcessor() {
 // It manages the different states of a job (idle, open valve, start pump, running, stop pump)
 // and transitions between these states based on the job's duration and timing
 void handleJobStateMachine() {
+    if (!jobActive) return;
+
+    unsigned long now = millis();
     switch (currentJobState) {
         case JOB_IDLE:
-            // do nothing, wait for a job to start
+            // nothing
             break;
         case JOB_OPEN_VALVE: {
-            int plantNum = atoi(runningJob.plant + 6);
-            handleValveSwitch(plantNum);
-            currentJobState = JOB_START_PUMP;
-            jobStateTimestamp = millis();
+            int plantNum = 0;
+            sscanf(runningJob.plant, "plant-%d", &plantNum);
+            plantNum--; // Convert to 0-based index
+            
+            if (plantNum >= 0 && plantNum < settings.plant_count) {
+                handleValveSwitch(plantNum);
+                currentJobState = JOB_START_PUMP;
+                jobStateTimestamp = now;
+            } else {
+                logThrottled("Invalid plant number in job - aborting");
+                jobActive = false;
+                currentJobState = JOB_IDLE;
+            }
             break;
         }
         case JOB_START_PUMP:
-            if (millis() - jobStateTimestamp >= 1000) { // wait 1 second before starting the pump
-                handlePumpSwitch();
-                currentJobState = JOB_RUNNING;
-                jobStateTimestamp = millis();
+            if (now - jobStateTimestamp >= 500) { // 500ms after opening valve
+                // ensure at least one valve is open before starting pump
+                pumpCtx.manualControl = false;
+                pumpCtx.targetState = true;
+                pumpCtx.state = PUMP_STARTING;
+
+                handlePumpSwitch(false);  // false = not manual control
+                
+                if (pumpCtx.state == PUMP_RUNNING) {
+                    logThrottled("Pump started for job: %s", runningJob.name);
+                    currentJobState = JOB_RUNNING;
+                    jobStateTimestamp = now;
+                } else {
+                    logThrottled("Failed to start pump for job - aborting");
+                    jobActive = false;
+                    currentJobState = JOB_IDLE;
+                }
             }
             break;
         case JOB_RUNNING:
-            if (millis() - jobStateTimestamp >= runningJob.duration * 1000) {
-                handlePumpSwitch();
+            // running duration assumed in seconds
+            if (now - jobStateTimestamp >= (unsigned long)runningJob.duration * 1000UL) {
+                pumpCtx.manualControl = false;
+                pumpCtx.targetState = false;
+                pumpCtx.state = PUMP_STOPPING;  // Force state change
+
+                handlePumpSwitch(false);
+
                 currentJobState = JOB_STOP_PUMP;
-                jobStateTimestamp = millis();
+                jobStateTimestamp = now;
+                logThrottled("Job duration complete, stopping pump");
             }
             break;
         case JOB_STOP_PUMP:
-            if (millis() - jobStateTimestamp >= 5000) { // wait 5 seconds before closing the valve
-                int plantNum = atoi(runningJob.plant + 6);
-                handleValveSwitch(plantNum);
-                currentJobState = JOB_IDLE;
-                jobActive = false;
-                Serial.println("Job finished.");
-                WebSerial.print(F("Job finished.\n"));
+            if (now - jobStateTimestamp >= 750) { // wait 750ms after pump off
+                // Get plant number from job
+                int plantNum = 0;
+                sscanf(runningJob.plant, "plant-%d", &plantNum);
+                plantNum--; // Convert to 0-based index
+                
+                if (plantNum >= 0 && plantNum < settings.plant_count) {
+                    handleValveSwitch(plantNum);
+                    currentJobState = JOB_CLOSE_VALVE;
+                    jobStateTimestamp = now;
+                } else {
+                    logThrottled("Invalid plant number %d - aborting", plantNum + 1);
+                    jobActive = false;
+                    currentJobState = JOB_IDLE;
+                }
             }
+            break;
+        case JOB_CLOSE_VALVE:
+            // finalize and reset
+            jobActive = false;
+            currentJobState = JOB_IDLE;
+            logThrottled("Job finished.");
+            notifyClients();
             break;
     }
 }
 
 void setup(void) {
+    // Initialize pins
+    initializePins();
+
+    // Start serial for debugging
     initSerial();
     Serial.printf("Application version: %s\n", APP_VERSION);
 
+    // Initialize file system and WiFi
     initFS();
     initWiFi();
 
+    // Initialize WebSocket
     initWebSocket();
 
-    pinMode(valvePin_1, OUTPUT);
+    /*pinMode(valvePin_1, OUTPUT);
     pinMode(valvePin_2, OUTPUT);
-    pinMode(valvePin_3, OUTPUT);
+    pinMode(valvePin_3, OUTPUT);*/
     pinMode(pumpPin, OUTPUT);
 
     pinMode(moistureSensorPin_1, INPUT);
@@ -1023,11 +1483,17 @@ void setup(void) {
     pinMode(soilFlowSensorPin, INPUT_PULLUP);
     attachInterrupt(digitalPinToInterrupt(soilFlowSensorPin), pulseCounter, FALLING);
 
-    digitalWrite(valvePin_1, LOW);
+    /*digitalWrite(valvePin_1, LOW);
     digitalWrite(valvePin_2, LOW);
-    digitalWrite(valvePin_3, LOW);
+    digitalWrite(valvePin_3, LOW);*/
     digitalWrite(pumpPin, LOW);
-    delay(500);
+    delay(50);
+
+    // read initial states
+    /*valve1State = digitalRead(valvePin_1);
+    valve2State = digitalRead(valvePin_2);
+    valve3State = digitalRead(valvePin_3);*/
+    pumpState = digitalRead(pumpPin);
 
     // WebSerial is accessible at "<IP Address>/webserial" in browser
     WebSerial.begin(&server);
@@ -1036,6 +1502,27 @@ void setup(void) {
 
     // Arduino OTA config and start
     ArduinoOTA.setHostname("GrowboxWatering");
+    ArduinoOTA.onStart([]() {
+        otaUpdating = true;
+        logThrottled("OTA start");
+    });
+    ArduinoOTA.onEnd([]() {
+        otaUpdating = false;
+        logThrottled("OTA end");
+    });
+    ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+        // Throttle progress logs
+        static unsigned long lastProgressLog = 0;
+        unsigned long now = millis();
+        if (now - lastProgressLog > 1000) {
+            lastProgressLog = now;
+            logThrottled("OTA Progress: %u%%", (progress / (total / 100)));
+        }
+    });
+    ArduinoOTA.onError([](ota_error_t error) {
+        otaUpdating = false;
+        logThrottled("OTA Error[%u]", error);
+    });
     ArduinoOTA.begin();
 
     // Set HTTP server directives
@@ -1043,16 +1530,18 @@ void setup(void) {
     server.onNotFound(handleNotFound);
 
     server.serveStatic("/", LittleFS, "/");
-    server.serveStatic("/css/", LittleFS, "/css/");
     server.serveStatic("/js/", LittleFS, "/js/");
+    server.serveStatic("/css/", LittleFS, "/css/");
+    server.serveStatic("/lang/", LittleFS, "/lang/");
 
-    //Start HTTP server
+    // Start HTTP server
     server.begin();
-    Serial.println("HTTP server started");
-    WebSerial.print(F("HTTP server started\n"));
+    logThrottled("HTTP server started");
 
-    // Sync time with NTP server
-    syncTime();
+    // Initialize NTP context
+    ntpCtx.state = NTP_INIT;
+    ntpCtx.stateTime = millis();
+    ntpCtx.syncInProgress = true;
 
     // Load JSON configuration
     loadConfiguration(configfile);
@@ -1078,8 +1567,12 @@ void loop(void) {
 
     // Check if auto switch is enabled
     if (auto_switch) {
-        // Execute jobs processing
-        jobsProcessor();
+        unsigned long now = millis();
+        if (now - lastJobCheck >= JOB_CHECK_INTERVAL) {
+            // Execute jobs processing
+            jobsProcessor();
+            lastJobCheck = now;
+        }
     }
 
     // If pump is running calculate runtime and flow rate
@@ -1087,7 +1580,7 @@ void loop(void) {
         // Update timer
         if ((millis() - lastTime) > timerDelay) {
             // Stopwatch pump runtime
-            pumpRunTime = (millis() - pumpStartTime) / 1000;
+            pumpRunTime = (millis() - pumpStartMillis) / 1000.0f;
             // Calculate Soil Flowrate
             calculateSoilFlowRate();
             // Notify clients with updated data
@@ -1099,19 +1592,12 @@ void loop(void) {
     // Calculate Moisture Sensor Values
     //calculateMoistureSensorValues();
 
-    // Resynchronize with NTP every 30 minutes
-    if (millis() - lastNTPUpdate > ntpSyncInterval) {
-        syncTime();
+    // WebSerial Queue processing
+    processWebSerialQueue();
+    
+    // Statt direkte NTP-Prüfung
+    handleNTPSync();
 
-        // Current time and date
-        Serial.printf("Current time: %02d:%02d:%02d, Date: %04d-%02d-%02d\n",
-                timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec,
-                timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday);
-
-        WebSerial.printf("Current time: %02d:%02d:%02d, Date: %04d-%02d-%02d\n",
-                timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec,
-                timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday);
-    }
-
-    delay(1000);
+    // Keep loop non-blocking but allow background tasks
+    yield();
 }

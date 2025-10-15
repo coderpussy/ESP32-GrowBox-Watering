@@ -1,33 +1,38 @@
 :root {
-  /* Light theme */
-  --c-light-text: #333;
-  --c-light-background: #f2f2f2;
-  --c-light-o-background: #f2f2f2;
+    /* Light theme */
+    --c-light-text: #333;
+    --c-light-background: #f2f2f2;
+    --c-light-o-background: #f2f2f2;
 
-  /* Dark theme */
-  --c-dark-text: rgba(255, 255, 255, .8);
-  --c-dark-background: radial-gradient(ellipse farthest-corner at center bottom, #4f4f4f 0%, #303030 100%) center bottom/100% fixed;
-  --c-dark-o-background: #5f5f5f;
+    /* Dark theme */
+    --c-dark-text: rgba(255, 255, 255, .8);
+    --c-dark-background: radial-gradient(ellipse farthest-corner at center bottom, #4f4f4f 0%, #303030 100%) center bottom/100% fixed;
+    --c-dark-o-background: #5f5f5f;
 }
 
 .theme-container {
-  /* Make the dark theme the default */
-  --c-text: var(--c-dark-text);
-  --c-background: var(--c-dark-background);
+    /* Make the dark theme the default */
+    --c-text: var(--c-dark-text);
+    --c-background: var(--c-dark-background);
 
-  color: var(--c-text);
-  background: var(--c-background);
+    color: var(--c-text);
+    background: var(--c-background);
 
-  min-height: 100%;
-  width: 100%;
+    min-height: 100%;
+    width: 100%;
 
-  padding-top: 4.2em;
+    padding-top: 5em;
 }
-
+@media (max-width: 600px) {
+    .theme-container {
+        padding-top: 8em;
+    }
+}
 .theme-container [id^="overlay-"] .formcontrols {
-  /* Override the default theme */
-  --c-o-background: var(--c-dark-o-background);
-  background: var(--c-o-background);
+    /* Override the default theme */
+    --c-o-background: var(--c-dark-o-background);
+    background: var(--c-o-background);
+    z-index: 1000;
 }
 
 .theme-container [id^="overlay-"] .formcontrols input[type=text],
@@ -39,31 +44,31 @@
 }
 
 .dark-mode-label .toggle {
-  /*position: absolute;*/
-  width: 40px;
-  height: 22px;
-  border-radius: 22px;
-  background: #fff;
-  border: solid 2px #fff;
-  display: flex;
-  align-items: center;
-  cursor: pointer;
+    /*position: absolute;*/
+    width: 40px;
+    height: 22px;
+    border-radius: 22px;
+    background: #fff;
+    border: solid 2px #fff;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
 }
 .dark-mode-label .toggle .circle {
-  margin-left: 1px;
-  height: 18px;
-  width: 18px;
-  border-radius: 50%;
-  background: #092c3e;
-  transition: all 0.3s ease;
+    margin-left: 1px;
+    height: 18px;
+    width: 18px;
+    border-radius: 50%;
+    background: #092c3e;
+    transition: all 0.3s ease;
 }
 
 .dark-mode-checkbox:checked ~ .theme-container,
 .dark-mode-checkbox:checked ~ .theme-container [id^="overlay-"] .formcontrols {
-  /* Override the default theme */
-  --c-text: var(--c-light-text);
-  --c-background: var(--c-light-background);
-  --c-o-background: var(--c-light-background);
+    /* Override the default theme */
+    --c-text: var(--c-light-text);
+    --c-background: var(--c-light-background);
+    --c-o-background: var(--c-light-background);
 }
 
 .dark-mode-checkbox:checked ~ .theme-container [id^="overlay-"] .formcontrols input[type=text],
@@ -75,22 +80,22 @@
 }
 
 .dark-mode-checkbox:checked ~ .topnav .dark-mode-label .toggle {
-  background: #092c3e;
+    background: #092c3e;
 }
 
 .dark-mode-checkbox:checked ~ .topnav .dark-mode-label .circle {
-  margin-left: 20px;
-  background: #fff;
+    margin-left: 20px;
+    background: #fff;
 }
 
 .visually-hidden {
-  position: absolute;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  border: 0;
-  white-space: nowrap; /* 1. */
+    position: absolute;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    border: 0;
+    white-space: nowrap; /* 1. */
 }

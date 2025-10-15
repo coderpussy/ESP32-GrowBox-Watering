@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>Growbox Watering</title>
+        <title data-translate="title">Growbox Watering</title>
         <meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="icon" type="image/x-icon" href="favicon.ico">
@@ -13,7 +13,7 @@
 
         <div class="topnav">
             <div class="box box1">
-                <div>Growbox Watering</div>
+                <div data-translate="title">Growbox Watering</div>
             </div>
             <div class="box box2">
                 <div class="calendar-dates toggle-overlay calendar"></div>
@@ -31,6 +31,12 @@
                         </span>
                     </label>
                 </div>
+                <div class="custom-select">
+                    <select id="language-select">
+                        <option value="en">English</option>
+                        <option value="de">Deutsch</option>
+                    </select>
+                </div>
             </div>
         </div>
 
@@ -39,7 +45,7 @@
             <table>
                 <tr>
                     <td style="text-align: center;">
-                        <span>Automatic Watering:</span><br /><br />
+                        <span data-translate="automatic_watering">Automatic Watering:</span><br /><br />
                         <span id="mode"></span>
                         <label class="auto-switch" for="auto_switch">
                             <input type="checkbox" id="auto_switch" />
@@ -53,52 +59,17 @@
 
             <div id="moistureSensorsWrapper">
                 <table>
-                    <tr><td>Moisture Sensor 1:</td><td><span id="sensor_1"></span> &percnt;</td></tr>
-                    <tr><td>Moisture Sensor 2:</td><td><span id="sensor_2"></span> &percnt;</td></tr>
-                    <tr><td>Moisture Sensor 3:</td><td><span id="sensor_3"></span> &percnt;</td></tr>
+                    <tr><td data-translate="moisture_sensor_1">Moisture Sensor 1:</td><td><span id="sensor_1"></span> &percnt;</td></tr>
+                    <tr><td data-translate="moisture_sensor_2">Moisture Sensor 2:</td><td><span id="sensor_2"></span> &percnt;</td></tr>
+                    <tr><td data-translate="moisture_sensor_3">Moisture Sensor 3:</td><td><span id="sensor_3"></span> &percnt;</td></tr>
                 </table>
 
                 <br />
             </div>
 
             <table>
-                <tr>
-                    <td>
-                        <table><tr>
-                            <td style="text-align: center;">
-                                <span>Magnetic Valve 1:</span><br /><br />
-                                <span id="valve_1"></span>
-                                <label class="valve-switch" for="valve_switch_1">
-                                    <input type="checkbox" id="valve_switch_1" />
-                                    <div class="valve-slider round"></div>
-                                </label>
-                            </td>
-                        </tr></table>
-                    </td>
-                    <td>
-                        <table><tr>
-                            <td style="text-align: center;">
-                                <span>Magnetic Valve 2:</span><br /><br />
-                                <span id="valve_2"></span>
-                                <label class="valve-switch" for="valve_switch_2">
-                                    <input type="checkbox" id="valve_switch_2" />
-                                    <div class="valve-slider round"></div>
-                                </label>
-                            </td>
-                        </tr></table>
-                    </td>
-                    <td>
-                        <table><tr>
-                            <td style="text-align: center;">
-                                <span>Magnetic Valve 3:</span><br /><br />
-                                <span id="valve_3"></span>
-                                <label class="valve-switch" for="valve_switch_3">
-                                    <input type="checkbox" id="valve_switch_3" />
-                                    <div class="valve-slider round"></div>
-                                </label>
-                            </td>
-                        </tr></table>
-                    </td>
+                <tr id="valve-controls">
+                    <!-- Valve controls will be inserted here dynamically -->
                 </tr>
             </table>
 
@@ -107,7 +78,7 @@
             <table>
                 <tr>
                     <td style="text-align: center;">
-                        <span>Water Pump:</span><br /><br />
+                        <span data-translate="water_pump">Water Pump:</span><br /><br />
                         <span id="pump_1"></span>
                         <label class="pump-switch" for="pump_switch">
                             <input type="checkbox" id="pump_switch" />
@@ -122,19 +93,19 @@
             <table>
                 <tr>
                     <td style="text-align: left;">
-                        <span>Runs:</span>
-                        <span><span id="pumpRunTime"></span> sec.</span>
+                        <span data-translate="runs">Runs:</span>
+                        <span><span id="pumpRunTime"></span> <span data-translate="seconds">sec.</span></span>
                     </td>
                     <td>
                         <div id="soilFlowVolumeWrapper">
-                            <span>Soil Flow Rate:</span>
-                            <span><span id="soilFlowVolume"></span> ltr.</span>
+                            <span data-translate="soil_flow_rate">Soil Flow Rate:</span>
+                            <span><span id="soilFlowVolume"></span> <span data-translate="litre">ltr.</span></span>
                         </div>
                     </td>
                 </tr>
                 <tr>
                     <td colspan="2" style="padding-top: 10px; text-align: center;">
-                        <input id="resetCounter" type="button" class="button" value="Reset Counter">
+                        <input id="resetCounter" type="button" class="button" data-translate="reset_counter" value="Reset Counter">
                     </td>
                 </tr>
             </table>
@@ -143,29 +114,31 @@
             <div id="overlay-calendar">
                 <span class="close toggle-overlay calendar"></span>
                 <div class="content">
-                    <h1>Job Scheduler</h1>
+                    <h1 data-translate="job_scheduler">Job Scheduler</h1>
                     <div class="formcontrols">
                         <div class="job-form">
-                            <input type="text" id="job-name" placeholder="Enter job name...">
+                            <input type="text" id="job-name" data-translate="job_name_placeholder" placeholder="Enter job name...">
                             <select id="job-select">
-                                <option value="watering">Watering</option>
+                                <option value="watering" data-translate="watering">Watering</option>
                             </select>
                             <select id="plant-select">
-                                <option value="plant-1">Plant 1</option>
-                                <option value="plant-2">Plant 2</option>
-                                <option value="plant-3">Plant 3</option>
+                                <option value="all-plants" data-translate="all_plants">All Plants</option>
+                                <option value="plant-1" data-translate="plant_1">Plant 1</option>
+                                <option value="plant-2" data-translate="plant_2">Plant 2</option>
+                                <option value="plant-3" data-translate="plant_3">Plant 3</option>
                             </select>
-                            <input type="number" id="job-duration" min="2" max="120" placeholder="e.g. 90" style="width: 70px;" required />
-                            <span> sec.</span><span class="validity"></span>
+                            <input type="number" id="job-duration" min="2" max="120" data-translate="job_duration_placeholder" placeholder="e.g. 90" style="width: 70px;" required />
+                            <span data-translate="seconds">sec.</span><span class="validity"></span>
                             <input type="datetime-local" id="starttime">
-                            <input id="everyday" type="checkbox" /><span>all days</span>
-                            <input id="add-job" type="button" class="button" value="Add Job" />
+                            <input id="everyday" type="checkbox" /><span data-translate="every_day">all days</span>
+                            <input id="add-job" type="button" class="button" data-translate="add_job" value="Add Job" />
                         </div>
                         <div class="job-list" id="job-list">
                             <!-- Tasks will be added here dynamically -->
                         </div>
-                        <div class="save-job-list">
-                            <input id="save-jobs" type="button" class="button" value="Save Jobs" />
+                        <div class="manage-job-list">
+                            <input id="save-jobs" type="button" class="button" data-translate="save_jobs" value="Save Jobs" />
+                            <input id="delete-joblist" type="button" class="button" data-translate="delete_joblist" value="Delete Joblist" />
                         </div>
                     </div>
                 </div>
@@ -175,7 +148,7 @@
                 <span class="close toggle-overlay webserial"></span>
                 <div class="content">
                     <div class="formcontrols">
-                        <!--<iframe width="auto" height="400" src="/webserial"></iframe>-->
+                        <iframe width="600" height="400" src="/webserial"></iframe>
                     </div>
                 </div>
             </div>
@@ -183,16 +156,19 @@
             <div id="overlay-settings">
                 <span class="close toggle-overlay settings"></span>
                 <div class="content">
-                    <h1>Settings</h1>
+                    <h1 data-translate="settings">Settings</h1>
                     <div class="formcontrols">
                         <table>
-                            <tr><td>Use Webserial:</td><td><input type="checkbox" id="use_webserial"></td></tr>
-                            <tr><td>Use Soil Flow Sensor:</td><td><input type="checkbox" id="use_flowsensor"></td></tr>
-                            <tr><td>Use Soil Moisture Sensor:</td><td><input type="checkbox" id="use_moisturesensor"></td></tr>
+                            <tr><td data-translate="use_webserial">Use Webserial:</td><td><input type="checkbox" id="use_webserial"></td></tr>
+                            <tr><td data-translate="use_flowsensor">Use Soil Flow Sensor:</td><td><input type="checkbox" id="use_flowsensor"></td></tr>
+                            <tr><td data-translate="use_moisturesensor">Use Soil Moisture Sensor:</td><td><input type="checkbox" id="use_moisturesensor"></td></tr>
+                            <tr><td data-translate="auto_switch_enabled">Auto switch enabled by default:</td><td><input type="checkbox" id="auto_switch_enabled"></td></tr>
+                            <tr><td data-translate="plant_count">Number of Plants:</td><td><input type="number" id="plant_count" min="1" max="8" value="3"></td></tr>
+                            <tr><td colspan="2"><small data-translate="plant_count_warning" class="warning-text"></small></td></tr>
                         </table>
                         <p>
-                            <input type="button" class="button toggle-overlay settings" value="Back"> 
-                            <input id="savesettings" type="button" class="button" value="Set"> 
+                            <input type="button" class="button toggle-overlay settings" data-translate="back" value="Back"> 
+                            <input id="savesettings" type="button" class="button" data-translate="set" value="Set"> 
                         </p>
                     </div>
                 </div>
@@ -200,6 +176,5 @@
 
         </div>
         <script src="js/index.js" type="module"></script>
-        <script src="js/scheduler.js"></script>
     </body>
 </html>

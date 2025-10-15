@@ -1,5 +1,6 @@
-// Version 0.9 pre3, 14.08.2025, coderpussy
-const char* APP_VERSION = "0.9 pre3";
+// Version 0.9 pre3,    14.08.2025, coderpussy
+// Version 0.9.1,       12.10.2025, coderpussy
+const char* APP_VERSION = "0.9.1";
 
 // If need to format LITTLEFS filesystem due to corruption
 // After formatting LITTLEFS, please set below variable to false,
@@ -7,7 +8,7 @@ const char* APP_VERSION = "0.9 pre3";
 #define FORMAT_LITTLEFS_IF_FAILED false
 
 // Wifi: Select AP or Client
-#define WiFiMode_AP_STA 0                               // Defines WiFi Mode 0 -> AP (with IP:192.168.4.1 and  1 -> Station (client with IP: via DHCP)
+#define WiFiMode_AP_STA 1                               // Defines WiFi Mode 0 -> AP (with IP:192.168.4.1 and  1 -> Station (client with IP: via DHCP)
 
 // Enter your AP SSID and PASSWORD
 const char* ssid_ap = "growboxwatering";                // Set AP SSID name
@@ -20,11 +21,21 @@ const char* password_sta = "xxxxxxxxxxxxxxxxx";      // Set STA password
 // Timezone string for your region, example: https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv
 const char* timezone = "CET-1CEST,M3.5.0,M10.5.0/3"; // CET-1CEST,M3.5.0,M10.5.0/3 = Europe/Berlin
 
+// Timezone information
+const long gmtOffset_sec = 3600;
+const int daylightOffset_sec = 3600;
+//const char* ntpServer = "2.europe.pool.ntp.org";
+const char* ntpServer1 = "fritz.box";
+const char* ntpServer2 = "pool.ntp.org";
+const char* ntpServer3 = "time.nist.gov";
+
 // Settings structure
 struct Settings {
     bool use_webserial = false; // Enable WebSerial
     bool use_flowsensor = false; // Enable Flow Sensor
     bool use_moisturesensor = false; // Enable Moisture Sensor
+    bool auto_switch_enabled = false; // Enable/disable auto switch
+    uint8_t plant_count = 3;  // Default number of plants
 };
 
 // Define config file on LittleFS

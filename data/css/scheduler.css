@@ -2,6 +2,7 @@
 .job-form {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 10px;
     margin-bottom: 20px;
 }
@@ -17,6 +18,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
     padding: 5px;
     border: 1px solid #ccc;
     border-radius: 5px;
@@ -38,17 +40,10 @@
 .job p:not(:last-child) span {
     padding-left: 3px;
 }
-.job .itemedit:hover {
-    cursor: not-allowed;
-}
-.job .itemdelete {
+.job .itemdelete, .job .itemedit {
     cursor: pointer;
 }
-.save-job-list {
-    display: flex;
-    flex-direction: row;
-    justify-content: end;
-}
+
 input#job-duration + span::after {
     font-weight: bold;
     padding-left: 5px;
@@ -57,8 +52,18 @@ input#job-duration:invalid + span::after {
     content: "✖";
     color: red;
 }
-
 input#job-duration:valid + span::after {
     content: "✓";
     color: green;
+}
+
+.manage-job-list {
+    display: flex;
+    flex-direction: row;
+    justify-content: end;
+}
+#save-jobs:disabled, #delete-joblist:disabled {
+    background-color: #cccccc;
+    opacity: 0.5;
+    cursor: not-allowed;
 }
