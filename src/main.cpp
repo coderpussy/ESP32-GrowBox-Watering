@@ -1341,8 +1341,8 @@ void jobsProcessor() {
                     int diff = currentSecondsOfDay - jobSecondsOfDay;
                     if (diff < 0) diff = -diff;
                     
-                    logThrottled("One-time job %d date matched, time diff: %d seconds", 
-                        job.id, diff);
+                    /*logThrottled("One-time job %d date matched, time diff: %d seconds", 
+                        job.id, diff);*/
                         
                     if (diff <= startWindowSec) {
                         shouldStart = true;
