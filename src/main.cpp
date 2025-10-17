@@ -39,9 +39,9 @@ const char* timezone = "CET-1CEST,M3.5.0,M10.5.0/3";  // Central European Time
 
 // Define WiFi credentials
 const char* ssid_ap = "GrowboxAP";
-const char* password_ap = "maja001";
-const char* ssid_sta = "Superpueppi-WLAN";  // Change to your WiFi SSID
-const char* password_sta = "10250562589012613526";  // Change to your WiFi password
+const char* password_ap = "xxxxxxxxxxx";
+const char* ssid_sta = "XYZ-WLAN";  // Change to your WiFi SSID
+const char* password_sta = "xxxxxxxxxxxx";  // Change to your WiFi password
 const int WiFiMode_AP_STA = 1;  // 0 = AP mode, 1 = STA mode
 
 // Global state variables
