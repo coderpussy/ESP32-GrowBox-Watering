@@ -1,3 +1,4 @@
+/*
 // Version 0.9 pre3,    14.08.2025, coderpussy
 // Version 0.9.1,       12.10.2025, coderpussy
 const char* APP_VERSION = "0.9.1";
@@ -12,11 +13,11 @@ const char* APP_VERSION = "0.9.1";
 
 // Enter your AP SSID and PASSWORD
 const char* ssid_ap = "growboxwatering";                // Set AP SSID name
-const char* password_ap = "boxxxxx";                    // Set AP password
+const char* password_ap = "maja001";                    // Set AP password
 
 // Enter your STA SSID and PASSWORD
-const char* ssid_sta = "XYZ-WLAN";              // Set STA SSID name
-const char* password_sta = "xxxxxxxxxxxxxxxxx";      // Set STA password
+const char* ssid_sta = "Superpueppi-WLAN";              // Set STA SSID name
+const char* password_sta = "10250562589012613526";      // Set STA password
 
 // Timezone string for your region, example: https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv
 const char* timezone = "CET-1CEST,M3.5.0,M10.5.0/3"; // CET-1CEST,M3.5.0,M10.5.0/3 = Europe/Berlin
@@ -43,3 +44,4 @@ const char* configfile = "/settings.json";
 
 // Define jobs file on LittleFS
 const char* jobsfile = "/schedules.json";
+*/
