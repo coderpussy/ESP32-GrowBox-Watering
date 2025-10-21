@@ -44,5 +44,15 @@
     "auto_switch_enabled": "Automatik-Modus standardmäßig aktiviert:",
     "back": "Zurück",
     "set": "Speichern",
-    "delete_joblist": "Jobliste löschen"
+    "delete_joblist": "Jobliste löschen",
+    "wifi_manager": "WiFi-Manager",
+    "wifi_manager_title": "WiFi-Konfiguration",
+    "scan_networks": "Netzwerke scannen",
+    "wifi_network": "WiFi-Netzwerk:",
+    "select_network": "Netzwerk auswählen",
+    "manual_ssid": "Oder SSID manuell eingeben:",
+    "password": "Passwort:",
+    "connect": "Verbinden",
+    "connecting": "Verbinde...",
+    "reset_wifi": "WiFi-Einstellungen zurücksetzen"
 }

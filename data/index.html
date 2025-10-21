@@ -16,6 +16,7 @@
                 <div data-translate="title">Growbox Watering</div>
             </div>
             <div class="box box2">
+                <div class="wifi-icon toggle-overlay wifi"></div>
                 <div class="calendar-dates toggle-overlay calendar"></div>
                 <div class="power-plug toggle-overlay webserial"></div>
                 <div class="gear toggle-overlay settings">
@@ -170,6 +171,40 @@
                             <input type="button" class="button toggle-overlay settings" data-translate="back" value="Back"> 
                             <input id="savesettings" type="button" class="button" data-translate="set" value="Set"> 
                         </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- WiFi Manager Overlay -->
+            <div id="overlay-wifi">
+                <span class="close toggle-overlay wifi"></span>
+                <div class="content overlay-content wifi-manager-content">
+                    <h1 data-translate="wifi_manager_title">WiFi Configuration</h1>
+                    <div class="formcontrols">
+                        <div id="wifi-message" class="message"></div>
+                        <div id="wifi-loading" class="loading">
+                            <div class="spinner"></div>
+                            <p data-translate="connecting">Connecting...</p>
+                        </div>
+                        <div id="wifi-form-container">
+                            <button type="button" id="scanNetworks" class="button scan-button">
+                                <span data-translate="scan_networks">Scan Networks</span>
+                            </button>
+                            <label for="wifi-ssid" data-translate="wifi_network">WiFi Network:</label>
+                            <select id="wifi-ssid" class="input-field">
+                                <option value="" data-translate="select_network">Select a network</option>
+                            </select>
+                            <label for="wifi-ssid-manual" data-translate="manual_ssid">Or enter SSID manually:</label>
+                            <input type="text" id="wifi-ssid-manual" class="input-field" placeholder="Enter SSID">
+                            <label for="wifi-password" data-translate="password">Password:</label>
+                            <input type="password" id="wifi-password" class="input-field" placeholder="Enter WiFi password">
+                            <button type="button" id="connectWiFi" class="button">
+                                <span data-translate="connect">Connect</span>
+                            </button>
+                            <button type="button" id="resetWiFi" class="button reset-button">
+                                <span data-translate="reset_wifi">Reset WiFi Settings</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

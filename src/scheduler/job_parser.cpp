@@ -10,10 +10,10 @@ jobDateTime parseJobDateTime(const char* starttime) {
 
     // Try full datetime with both separators
     matched = sscanf(starttime, "%4d-%2d-%2d%*[T ]%2d:%2d", &year, &month, &day, &hour, &minute);
-    
+
     if (matched == 5) {
-        logThrottled("Parsed one-time job: %04d-%02d-%02d %02d:%02d", 
-            year, month, day, hour, minute);
+        /*logThrottled("Parsed one-time job: %04d-%02d-%02d %02d:%02d", 
+            year, month, day, hour, minute);*/
             
         if (year >= 1970 && month >= 1 && month <= 12 && 
             day >= 1 && day <= 31 && 
@@ -34,9 +34,10 @@ jobDateTime parseJobDateTime(const char* starttime) {
 
     // Try time-only format
     matched = sscanf(starttime, "%2d:%2d", &hour, &minute);
+    
     if (matched == 2) {
-        logThrottled("Parsed everyday job: %02d:%02d", hour, minute);
-            
+        /*logThrottled("Parsed everyday job: %02d:%02d", hour, minute);*/
+
         if (hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59) {
             dt.hour = hour;
             dt.minute = minute;

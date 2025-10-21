@@ -24,8 +24,11 @@ void handleNTPSync() {
                 ntpCtx.syncInProgress = true;
                 ntpCtx.retryCount = 0;
                 logThrottled("Starting NTP sync...");
+                // Don't break - continue to NTP_INIT immediately
+            } else {
+                break;
             }
-            break;
+            // Fall through to NTP_INIT
             
         case NTP_INIT:
             logThrottled("Configuring NTP...");
@@ -43,7 +46,8 @@ void handleNTPSync() {
                 lastNTPWaitLog = now;
             }
 
-            if (timeNow > 24 * 3600) {
+            // Check if we have a valid time (Unix timestamp after Jan 2, 1970)
+            if (timeNow > 86400) {  // More than 1 day since epoch
                 struct tm timeinfo;
                 localtime_r(&timeNow, &timeinfo);
                 setenv("TZ", timezone, 1);
@@ -55,13 +59,15 @@ void handleNTPSync() {
                     timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday,
                     timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
             } else {
-                if (now - ntpCtx.stateTime > 10000) {
+                // Timeout after 10 seconds
+                if (now - ntpCtx.stateTime > ntpMaxWait) {
                     if (++ntpCtx.retryCount >= 3) {
                         ntpCtx.state = NTP_IDLE;
                         ntpCtx.syncInProgress = false;
                         logThrottled("NTP sync failed after 3 retries");
                     } else {
                         ntpCtx.state = NTP_INIT;
+                        ntpCtx.stateTime = now;
                         logThrottled("NTP sync retry %d/3", ntpCtx.retryCount);
                     }
                 }

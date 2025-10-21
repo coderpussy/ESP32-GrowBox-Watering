@@ -7,14 +7,15 @@
 extern const char* APP_VERSION;
 
 // Pin Definitions
-const int pumpPin = 13;
-const int soilFlowSensorPin = 14;
+const int pumpPin = 33;
+const int soilFlowSensorPin = 19;
 
 // Timing Constants
-static const unsigned long LOG_THROTTLE_MS = 100;
-static const unsigned long WEBSERIAL_FLUSH_INTERVAL = 50;
+static const unsigned long LOG_THROTTLE_MS = 0; //100;
+static const unsigned long WEBSERIAL_FLUSH_INTERVAL = 0; //50;
 static const unsigned long JOB_CHECK_INTERVAL = 1000;
 static const unsigned long NTP_WAIT_LOG_INTERVAL = 2000;
+static const unsigned long WIFI_CHECK_INTERVAL = 30000;  // Check WiFi every 30 seconds
 
 // NTP Configuration
 extern const char* ntpServer1;
@@ -23,15 +24,8 @@ extern const char* ntpServer3;
 extern const long gmtOffset_sec;
 extern const int daylightOffset_sec;
 extern const char* timezone;
-const long ntpSyncInterval = 3600000;
+const long ntpSyncInterval = 3600000; // 1 hour in milliseconds 60 * 60 * 1000
 const unsigned long ntpMaxWait = 10000;
-
-// WiFi Configuration
-extern const char* ssid_ap;
-extern const char* password_ap;
-extern const char* ssid_sta;
-extern const char* password_sta;
-extern const int WiFiMode_AP_STA;
 
 // Settings Structure
 struct Settings {

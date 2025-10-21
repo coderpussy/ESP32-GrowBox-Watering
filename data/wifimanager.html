@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>ESP32 WiFi Manager</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+            * {
+                box-sizing: border-box;
+            }
+            
+            body {
+                font-family: Arial, sans-serif;
+                margin: 0;
+                padding: 20px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+            
+            .container {
+                background: white;
+                padding: 30px;
+                border-radius: 10px;
+                box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+                max-width: 400px;
+                width: 100%;
+            }
+            
+            h1 {
+                text-align: center;
+                color: #333;
+                margin-bottom: 10px;
+                font-size: 24px;
+            }
+            
+            .subtitle {
+                text-align: center;
+                color: #666;
+                margin-bottom: 30px;
+                font-size: 14px;
+            }
+            
+            label {
+                display: block;
+                margin-bottom: 5px;
+                color: #555;
+                font-weight: bold;
+            }
+            
+            input[type="text"],
+            input[type="password"],
+            select {
+                width: 100%;
+                padding: 12px;
+                margin-bottom: 20px;
+                border: 2px solid #ddd;
+                border-radius: 5px;
+                font-size: 16px;
+                transition: border-color 0.3s;
+            }
+            
+            input[type="text"]:focus,
+            input[type="password"]:focus,
+            select:focus {
+                outline: none;
+                border-color: #667eea;
+            }
+            
+            button {
+                width: 100%;
+                padding: 12px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border: none;
+                border-radius: 5px;
+                font-size: 16px;
+                font-weight: bold;
+                cursor: pointer;
+                transition: transform 0.2s;
+            }
+            
+            button:hover:not(:disabled) {
+                transform: translateY(-2px);
+            }
+            
+            button:active:not(:disabled) {
+                transform: translateY(0);
+            }
+            
+            button:disabled {
+                opacity: 0.6;
+                cursor: not-allowed;
+            }
+            
+            .scan-button {
+                background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                margin-bottom: 20px;
+            }
+            
+            .message {
+                padding: 10px;
+                margin-bottom: 20px;
+                border-radius: 5px;
+                text-align: center;
+                display: none;
+            }
+            
+            .success {
+                background: #d4edda;
+                color: #155724;
+                border: 1px solid #c3e6cb;
+            }
+            
+            .error {
+                background: #f8d7da;
+                color: #721c24;
+                border: 1px solid #f5c6cb;
+            }
+            
+            .info {
+                background: #d1ecf1;
+                color: #0c5460;
+                border: 1px solid #bee5eb;
+            }
+            
+            .loading {
+                display: none;
+                text-align: center;
+                margin: 20px 0;
+            }
+            
+            .spinner {
+                border: 4px solid #f3f3f3;
+                border-top: 4px solid #667eea;
+                border-radius: 50%;
+                width: 40px;
+                height: 40px;
+                animation: spin 1s linear infinite;
+                margin: 0 auto;
+            }
+            
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+            
+            .network-info {
+                font-size: 12px;
+                color: #666;
+                margin-top: -15px;
+                margin-bottom: 15px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Growbox WiFi Setup</h1>
+            <p class="subtitle">Configure your WiFi connection</p>
+            
+            <div id="message" class="message"></div>
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>Connecting...</p>
+            </div>
+            
+            <form id="wifi-form">
+                <button type="button" class="scan-button" onclick="scanNetworks()">
+                    🔍 Scan Networks
+                </button>
+                
+                <label for="ssid">WiFi Network:</label>
+                <select id="ssid" name="ssid" required>
+                    <option value="">Select a network or enter manually</option>
+                </select>
+                <div class="network-info" id="network-info"></div>
+                
+                <label for="ssid-manual">Or enter SSID manually:</label>
+                <input type="text" id="ssid-manual" name="ssid-manual" placeholder="Enter SSID (for hidden networks)">
+                
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" required placeholder="Enter WiFi password" minlength="8">
+                
+                <button type="submit">Connect to WiFi</button>
+            </form>
+        </div>
+        
+        <script>
+            function showMessage(message, type) {
+                const messageDiv = document.getElementById('message');
+                messageDiv.textContent = message;
+                messageDiv.className = 'message ' + type;
+                messageDiv.style.display = 'block';
+                
+                if (type !== 'success') {
+                    setTimeout(() => {
+                        messageDiv.style.display = 'none';
+                    }, 5000);
+                }
+            }
+            
+            function showLoading(show) {
+                document.getElementById('loading').style.display = show ? 'block' : 'none';
+                document.getElementById('wifi-form').style.display = show ? 'none' : 'block';
+                
+                // Disable/enable form buttons
+                const buttons = document.querySelectorAll('button');
+                buttons.forEach(btn => btn.disabled = show);
+            }
+            
+            async function scanNetworks() {
+                showWiFiMessage('Scanning for networks...', 'info');
+                
+                try {
+                    // Start the scan
+                    const startResponse = await fetch('/scan');
+                    
+                    if (startResponse.status === 409) {
+                        showWiFiMessage('Scan already in progress, waiting...', 'info');
+                    }
+                    
+                    // Poll for results
+                    let scanning = true;
+                    let attempts = 0;
+                    const maxAttempts = 30; // 15 seconds max
+                    
+                    while (scanning && attempts < maxAttempts) {
+                        await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms
+                        
+                        const resultsResponse = await fetch('/scan-results');
+                        const data = await resultsResponse.json();
+                        
+                        if (data.status === 'complete') {
+                            scanning = false;
+                            
+                            const select = document.getElementById('wifi-ssid');
+                            select.innerHTML = '<option value="">Select a network</option>';
+                            
+                            // Sort networks by signal strength
+                            data.networks.sort((a, b) => b.rssi - a.rssi);
+                            
+                            data.networks.forEach(network => {
+                                const option = document.createElement('option');
+                                option.value = network.ssid;
+                                
+                                // Add signal strength indicator
+                                let signalBars = '';            
+                                if (network.rssi > -50) signalBars = '||||';
+                                else if (network.rssi > -60) signalBars = '|||_';
+                                else if (network.rssi > -70) signalBars = '||__';
+                                else signalBars = '|___';
+                                
+                                option.textContent = `${signalBars} ${network.ssid} (${network.rssi} dBm)`;
+                                select.appendChild(option);
+                            });
+                            
+                            showWiFiMessage(`Found ${data.networks.length} network(s)`, 'success');
+                        } else if (data.error) {
+                            scanning = false;
+                            showWiFiMessage('Scan failed: ' + data.error, 'error');
+                        }
+                        
+                        attempts++;
+                    }
+                    
+                    if (attempts >= maxAttempts) {
+                        showWiFiMessage('Scan timeout', 'error');
+                    }
+                } catch (error) {
+                    showWiFiMessage('Failed to scan networks', 'error');
+                    console.error('Scan error:', error);
+                }
+            }
+            
+            // Show network info when selected
+            document.getElementById('ssid').addEventListener('change', function() {
+                const info = document.getElementById('network-info');
+                if (this.value) {
+                    info.textContent = `Selected: ${this.value}`;
+                    document.getElementById('ssid-manual').value = '';
+                } else {
+                    info.textContent = '';
+                }
+            });
+            
+            document.getElementById('wifi-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const ssidSelect = document.getElementById('ssid').value;
+                const ssidManual = document.getElementById('ssid-manual').value;
+                const password = document.getElementById('password').value;
+                
+                const ssid = ssidManual || ssidSelect;
+                
+                if (!ssid) {
+                    showMessage('Please select or enter a WiFi network', 'error');
+                    return;
+                }
+                
+                if (password.length < 8) {
+                    showMessage('Password must be at least 8 characters', 'error');
+                    return;
+                }
+                
+                showLoading(true);
+                
+                try {
+                    const response = await fetch('/connect', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: `ssid=${encodeURIComponent(ssid)}&password=${encodeURIComponent(password)}`
+                    });
+                    
+                    const result = await response.text();
+                    
+                    if (response.ok) {
+                        showLoading(false);
+                        showMessage('✓ Connected successfully! Device is restarting...', 'success');
+                        
+                        // Wait for device to restart and try to redirect to main page
+                        setTimeout(() => {
+                            showMessage('Redirecting to main page...', 'info');
+                            // Try to redirect to the device's new IP (if known) or just reload
+                            setTimeout(() => {
+                                window.location.href = '/';
+                            }, 2000);
+                        }, 3000);
+                    } else {
+                        showLoading(false);
+                        showMessage('Failed to connect: ' + result, 'error');
+                    }
+                } catch (error) {
+                    showLoading(false);
+                    showMessage('Connection error. Please check your credentials and try again.', 'error');
+                    console.error('Connection error:', error);
+                }
+            });
+            
+            // Auto-scan on page load
+            window.addEventListener('load', () => {
+                setTimeout(scanNetworks, 500);
+            });
+        </script>
+    </body>
+</html>

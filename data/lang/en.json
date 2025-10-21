@@ -44,5 +44,15 @@
     "auto_switch_enabled": "Auto switch enabled by default:",
     "back": "Back",
     "set": "Set",
-    "delete_joblist": "Delete Joblist"
+    "delete_joblist": "Delete Joblist",
+    "wifi_manager": "WiFi Manager",
+    "wifi_manager_title": "WiFi Configuration",
+    "scan_networks": "Scan Networks",
+    "wifi_network": "WiFi Network:",
+    "select_network": "Select a network",
+    "manual_ssid": "Or enter SSID manually:",
+    "password": "Password:",
+    "connect": "Connect",
+    "connecting": "Connecting...",
+    "reset_wifi": "Reset WiFi Settings"
 }

@@ -37,13 +37,6 @@ const long gmtOffset_sec = 3600;  // GMT+1
 const int daylightOffset_sec = 3600;  // DST offset
 const char* timezone = "CET-1CEST,M3.5.0,M10.5.0/3";  // Central European Time
 
-// Define WiFi credentials
-const char* ssid_ap = "GrowboxAP";
-const char* password_ap = "xxxxxxxxxxx";
-const char* ssid_sta = "XYZ-WLAN";  // Change to your WiFi SSID
-const char* password_sta = "xxxxxxxxxxxx";  // Change to your WiFi password
-const int WiFiMode_AP_STA = 1;  // 0 = AP mode, 1 = STA mode
-
 // Global state variables
 Settings settings;
 std::vector<jobStruct> joblistVec;
@@ -78,6 +71,7 @@ unsigned long lastTime = 0;
 unsigned long timerDelay = 1000;
 
 static unsigned long lastJobCheck = 0;
+static unsigned long lastWiFiCheck = 0;
 volatile bool otaUpdating = false;
 
 // Server and file paths
@@ -113,11 +107,111 @@ void recvMsg(uint8_t *data, size_t len) {
 }
 
 void handleRoot(AsyncWebServerRequest *request) {
-    request->send(LittleFS, "/index.html", "text/html");
+    // If in AP mode (not connected to WiFi), redirect to WiFi manager
+    if (WiFi.getMode() == WIFI_AP) {
+        request->send(LittleFS, "/wifimanager.html", "text/html");
+    } else {
+        request->send(LittleFS, "/index.html", "text/html");
+    }
 }
 
 void handleNotFound(AsyncWebServerRequest *request) {
     request->send(404, "text/plain", "File Not Found\n\n");
+}
+
+/*void handleWiFiManager(AsyncWebServerRequest *request) {
+    request->send(LittleFS, "/wifimanager.html", "text/html");
+}*/
+
+void handleScan(AsyncWebServerRequest *request) {
+    // Check if a scan is already running
+    int scanStatus = WiFi.scanComplete();
+    
+    if (scanStatus == WIFI_SCAN_RUNNING) {
+        request->send(409, "application/json", "{\"error\":\"Scan already in progress\"}");
+        return;
+    }
+    
+    // Delete old scan results if they exist
+    if (scanStatus >= 0) {
+        WiFi.scanDelete();
+    }
+    
+    // Start async scan
+    WiFi.scanNetworks(true);  // true = async mode
+    
+    // Send immediate response
+    request->send(202, "application/json", "{\"status\":\"Scan started, please wait...\"}");
+}
+
+// Add a new handler to get scan results
+void handleScanResults(AsyncWebServerRequest *request) {
+    int n = WiFi.scanComplete();
+    
+    if (n == WIFI_SCAN_RUNNING) {
+        request->send(202, "application/json", "{\"status\":\"scanning\",\"networks\":[]}");
+        return;
+    }
+    
+    if (n == WIFI_SCAN_FAILED) {
+        request->send(500, "application/json", "{\"error\":\"WiFi scan failed\"}");
+        WiFi.scanDelete();
+        return;
+    }
+    
+    if (n < 0) {
+        request->send(500, "application/json", "{\"error\":\"Unknown scan error\"}");
+        return;
+    }
+    
+    // Build JSON response
+    String json = "{\"status\":\"complete\",\"networks\":[";
+    
+    for (int i = 0; i < n; ++i) {
+        if (i) json += ",";
+        json += "{";
+        json += "\"ssid\":\"" + WiFi.SSID(i) + "\",";
+        json += "\"rssi\":" + String(WiFi.RSSI(i)) + ",";
+        json += "\"encryption\":\"" + String(WiFi.encryptionType(i)) + "\"";
+        json += "}";
+    }
+    
+    json += "]}";
+    request->send(200, "application/json", json);
+    WiFi.scanDelete();
+}
+
+void handleConnect(AsyncWebServerRequest *request) {
+    String ssid = "";
+    String password = "";
+    
+    if (request->hasParam("ssid", true)) {
+        ssid = request->getParam("ssid", true)->value();
+    }
+    if (request->hasParam("password", true)) {
+        password = request->getParam("password", true)->value();
+    }
+    
+    if (ssid == "") {
+        request->send(400, "text/plain", "SSID is required");
+        return;
+    }
+    
+    // Save credentials
+    saveWiFiCredentials(ssid, password);
+    
+    request->send(200, "text/plain", "Credentials saved. Connecting...");
+    
+    // Restart ESP32 to connect with new credentials
+    delay(1000);
+    ESP.restart();
+}
+
+void handleResetWiFi(AsyncWebServerRequest *request) {
+    resetWiFiSettings();
+    request->send(200, "text/plain", "WiFi settings reset. Restarting...");
+    delay(1000);
+    ESP.restart();
 }
 
 void setup() {
@@ -127,7 +221,7 @@ void setup() {
     Serial.printf("Application version: %s\n", APP_VERSION);
     
     initFS();
-    initWiFi();
+    initWiFi(); // Custom WiFi Manager
     initWebSocket();
     
     pinMode(pumpPin, OUTPUT);
@@ -165,6 +259,14 @@ void setup() {
     });
     ArduinoOTA.begin();
     
+    // Add WiFi Manager routes
+    //server.on("/wifimanager", HTTP_GET, handleWiFiManager);
+    server.on("/scan", HTTP_GET, handleScan);
+    server.on("/scan-results", HTTP_GET, handleScanResults);
+    server.on("/connect", HTTP_POST, handleConnect);
+    server.on("/reset-wifi", HTTP_GET, handleResetWiFi);
+    
+    // Regular routes
     server.on("/", HTTP_GET, handleRoot);
     server.onNotFound(handleNotFound);
     server.serveStatic("/", LittleFS, "/");
@@ -186,30 +288,51 @@ void setup() {
 }
 
 void loop() {
-    ArduinoOTA.handle();
-    ws.cleanupClients();
+    unsigned long now = millis();
     
-    handleJobStateMachine();
-    
-    if (auto_switch) {
-        unsigned long now = millis();
-        if (now - lastJobCheck >= JOB_CHECK_INTERVAL) {
-            jobsProcessor();
-            lastJobCheck = now;
+    // Periodic WiFi connection check (every 30 seconds)
+    if (now - lastWiFiCheck >= WIFI_CHECK_INTERVAL) {
+        // Only check if we're supposed to be in station mode
+        // Check if scan is NOT running before attempting reconnection
+        int scanStatus = WiFi.scanComplete();
+        if (scanStatus != WIFI_SCAN_RUNNING && (WiFi.getMode() == WIFI_STA || WiFi.getMode() == WIFI_AP_STA)) {
+            if (!checkWiFiConnection()) {
+                logThrottled("WiFi reconnection failed, will retry in 30s");
+            }
         }
+        lastWiFiCheck = now;
     }
-    
-    if (pumpState == HIGH) {
-        if ((millis() - lastTime) > timerDelay) {
-            pumpRunTime = (millis() - pumpStartMillis) / 1000.0f;
-            calculateSoilFlowRate();
-            notifyClients();
-            lastTime = millis();
+
+    // Only run main functionality if connected to WiFi in station mode
+    if (WiFi.status() == WL_CONNECTED) {
+        ArduinoOTA.handle();
+        ws.cleanupClients();
+        
+        handleJobStateMachine();
+        
+        if (auto_switch) {
+            if (now - lastJobCheck >= JOB_CHECK_INTERVAL) {
+                jobsProcessor();
+                lastJobCheck = now;
+            }
         }
+        
+        if (pumpState == HIGH) {
+            if ((millis() - lastTime) > timerDelay) {
+                pumpRunTime = (millis() - pumpStartMillis) / 1000.0f;
+                calculateSoilFlowRate();
+                notifyClients();
+                lastTime = millis();
+            }
+        }
+        
+        processWebSerialQueue();
+        handleNTPSync();
+    } else {
+        // In AP mode or disconnected, still handle web server and WebSerial
+        ws.cleanupClients();
+        processWebSerialQueue();
     }
-    
-    processWebSerialQueue();
-    handleNTPSync();
     
     yield();
 }

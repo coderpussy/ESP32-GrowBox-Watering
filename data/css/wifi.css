@@ -1,0 +1,36 @@
+.wifi-icon {
+    top: 1px;
+    position: relative; /* Establishes positioning context for children */
+    display: inline-block;
+    width: 26px; /* Adjust size as needed */
+    height: 20px;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    border-top-color: #fff; /* The first bar */
+    cursor: pointer;
+}
+
+/* Middle bar */
+.wifi-icon::before {
+    content: '';
+    position: absolute;
+    top: 3px; /* Offset to place it within the main arch */
+    left: 2px;
+    width: 10px;
+    height: 4px;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    border-top-color: #fff;
+}
+
+/* Smallest bar */
+.wifi-icon::after {
+    content: '';
+    position: absolute;
+    top: 9px;
+    left: .46em;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background-color: #fff; /* The center dot */
+}
