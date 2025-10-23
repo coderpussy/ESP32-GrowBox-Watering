@@ -12,5 +12,6 @@ void handleGetJobList();
 void handleAddJobToList(const JsonDocument& json);
 void handleAutoSwitch();
 void handleResetCounter();
+void handleGetMoistureSensors();
 
 extern AsyncWebSocket ws;

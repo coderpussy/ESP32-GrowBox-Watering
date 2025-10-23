@@ -6,6 +6,8 @@
 @import "wifi.css";
 @import "wifimanager.css";
 
+@import "moisturesensor.css";
+
 /* Common CSS style definition */
 html {
     margin: 0;

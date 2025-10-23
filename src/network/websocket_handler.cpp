@@ -3,6 +3,7 @@
 #include "storage/filesystem_manager.h"
 #include "hardware/valve_control.h"
 #include "hardware/pump_control.h"
+#include "hardware/moisture_sensor.h"
 #include "hardware/pin_manager.h"
 #include "config.h"
 #include "utils/logger.h"
@@ -147,6 +148,30 @@ void handleAddJobToList(const JsonDocument& json) {
     logThrottled("Added job: %s", newJob.name);
 }
 
+void handleGetMoistureSensors() {
+    StaticJsonDocument<1024> doc;
+    JsonArray sensorsArray = doc.createNestedArray("sensors");
+
+    std::vector<MoistureSensorData> sensors = getMoistureSensorData();
+    
+    for (size_t i = 0; i < sensors.size(); i++) {
+        JsonObject sensor = sensorsArray.createNestedObject();
+        sensor["id"] = i + 1;
+        sensor["pin"] = sensors[i].pin;
+        sensor["analog"] = sensors[i].analogValue;
+        sensor["percent"] = sensors[i].percentValue;
+        sensor["isDry"] = sensors[i].isDry;
+    }
+
+    doc["enabled"] = settings.use_moisturesensor;
+    doc["count"] = sensors.size();
+
+    String response;
+    serializeJson(doc, response);
+
+    ws.textAll(response);
+}
+
 void handleAutoSwitch() {
     auto_switch = !auto_switch;
     logThrottled("Auto %s", auto_switch ? "On" : "Off");
@@ -196,6 +221,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
         else if (action == "savejoblist") saveJobList(jobsfile);
         else if (action == "deletejoblist") deleteJobList(jobsfile);
         else if (action == "resetcounter") handleResetCounter();
+        else if (action == "getmoisturesensors") handleGetMoistureSensors();
         else if (action == "auto_switch") handleAutoSwitch();
         else if (action == "pump_switch") handlePumpSwitch(true);
         else if (action == "valve_switch") {

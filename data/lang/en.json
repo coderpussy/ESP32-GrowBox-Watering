@@ -1,9 +1,10 @@
 {
     "title": "Growbox Watering",
     "automatic_watering": "Automatic Watering:",
-    "moisture_sensor_1": "Moisture Sensor 1:",
-    "moisture_sensor_2": "Moisture Sensor 2:",
-    "moisture_sensor_3": "Moisture Sensor 3:",
+    "moisture_sensors": "Moisture Sensors",
+    "moisture_level": "Moisture Level",
+    "sensor_status_ok": "OK",
+    "sensor_status_dry": "DRY",
     "magnetic_valve_1": "Magnetic Valve 1:",
     "magnetic_valve_2": "Magnetic Valve 2:",
     "magnetic_valve_3": "Magnetic Valve 3:",

@@ -16,6 +16,7 @@ static const unsigned long WEBSERIAL_FLUSH_INTERVAL = 0; //50;
 static const unsigned long JOB_CHECK_INTERVAL = 1000;
 static const unsigned long NTP_WAIT_LOG_INTERVAL = 2000;
 static const unsigned long WIFI_CHECK_INTERVAL = 30000;  // Check WiFi every 30 seconds
+static const unsigned long MOISTURE_CHECK_INTERVAL = 60000;  // Check moisture every 60 seconds
 
 // NTP Configuration
 extern const char* ntpServer1;

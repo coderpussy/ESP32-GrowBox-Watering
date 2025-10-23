@@ -185,72 +185,82 @@ function onOpen(event) {
 function onMessage(event) {
     let data = JSON.parse(event.data);
 
-    action = data.action;
     console.log('message:',data);
     
-    if (action == "setvalues") {
-        // Update dashboard control elements
-        auto_switch.checked = data.auto_switch;
+    // Check if action is defined in the received data
+    if (!data.action) {
+        if (data.sensors) {
+            updateMoistureSensors(data);
+        }
+    } else {
+        action = data.action;
 
-        // Handle dynamic valve states
-        if (data.valves) {
-            data.valves.forEach(valve => {
-                const switchElem = document.getElementById(`valve_switch_${valve.id}`);
-                if (switchElem) {
-                    switchElem.checked = valve.state;
-                }
-            });
-        }
+        if (action == "setvalues") {
+            // Update dashboard control elements
+            auto_switch.checked = data.auto_switch;
 
-        // Update pump control
-        pump_switch.checked = data.pump_switch;
-        // Update pump run time
-        pumpRunTime.innerText = data.pumpRunTime;
-        
-        if (data.soilFlowVolume) {
-            // Update soil flow volume
-            soilFlowVolume.innerText = data.soilFlowVolume;
-        }
-    } else if (action == "setsettings") {
-        // Update settings checkboxes
-        use_webserial.checked = data.use_webserial;
-        use_flowsensor.checked = data.use_flowsensor;
-        use_moisturesensor.checked = data.use_moisturesensor;
-        autoSwitchEnabled.checked = data.auto_switch_enabled;
-        if (data.auto_switch_enabled) auto_switch.checked = data.auto_switch_enabled;
+            // Handle dynamic valve states
+            if (data.valves) {
+                data.valves.forEach(valve => {
+                    const switchElem = document.getElementById(`valve_switch_${valve.id}`);
+                    if (switchElem) {
+                        switchElem.checked = valve.state;
+                    }
+                });
+            }
 
-        plantCountInput.value = data.plant_count || 3;
-        createValveControls(data.plant_count || 3);
-        updatePlantSelect(data.plant_count || 3);
+            // Update pump control
+            pump_switch.checked = data.pump_switch;
+            // Update pump run time
+            pumpRunTime.innerText = data.pumpRunTime;
+            
+            if (data.soilFlowVolume) {
+                // Update soil flow volume
+                soilFlowVolume.innerText = data.soilFlowVolume;
+            }
+        } else if (action == "setsettings") {
+            // Update settings checkboxes
+            use_webserial.checked = data.use_webserial;
+            use_flowsensor.checked = data.use_flowsensor;
+            use_moisturesensor.checked = data.use_moisturesensor;
+            autoSwitchEnabled.checked = data.auto_switch_enabled;
+            if (data.auto_switch_enabled) auto_switch.checked = data.auto_switch_enabled;
 
-        // Show/hide webserial settings based on use_webserial
-        if (use_webserial.checked) {
-            document.querySelector(".topnav .webserial").style.display = "block";
-            document.querySelector("#overlay-webserial").style.display = "grid";
-        } else {
-            document.querySelector(".topnav .webserial").style.display = "none";
-            document.querySelector("#overlay-webserial").style.display = "none";
+            plantCountInput.value = data.plant_count || 3;
+            createValveControls(data.plant_count || 3);
+            updatePlantSelect(data.plant_count || 3);
+
+            // Show/hide webserial settings based on use_webserial
+            if (use_webserial.checked) {
+                document.querySelector(".topnav .webserial").style.display = "block";
+                document.querySelector("#overlay-webserial").style.display = "grid";
+            } else {
+                document.querySelector(".topnav .webserial").style.display = "none";
+                document.querySelector("#overlay-webserial").style.display = "none";
+            }
+            // Show/hide flow sensor settings based on use_flowsensor
+            if (use_flowsensor.checked) {
+                document.querySelector("#soilFlowVolumeWrapper").style.display = "inline-block";
+            } else {
+                document.querySelector("#soilFlowVolumeWrapper").style.display = "none";
+            }
+            // Show/hide moisture sensor settings based on use_moisturesensor
+            if (use_moisturesensor.checked) {
+                document.querySelector("#moistureSensorsWrapper").style.display = "block";
+            } else {
+                document.querySelector("#moistureSensorsWrapper").style.display = "none";
+            }
+        } else if (action == "setjoblist") {
+            // Set job list from received joblist data
+            setJobList(data.joblist);
         }
-        // Show/hide flow sensor settings based on use_flowsensor
-        if (use_flowsensor.checked) {
-            document.querySelector("#soilFlowVolumeWrapper").style.display = "inline-block";
-        } else {
-            document.querySelector("#soilFlowVolumeWrapper").style.display = "none";
-        }
-        // Show/hide moisture sensor settings based on use_moisturesensor
-        if (use_moisturesensor.checked) {
-            document.querySelector("#moistureSensorsWrapper").style.display = "block";
-        } else {
-            document.querySelector("#moistureSensorsWrapper").style.display = "none";
-        }
-    } else if (action == "setjoblist") {
-        // Set job list from received joblist data
-        setJobList(data.joblist);
     }
 }
 
 function getValues() {
     websocket.send(JSON.stringify({"action":"getvalues"}));
+    // Request moisture sensor data
+    websocket.send(JSON.stringify({"action":"getmoisturesensors"}));
 }
 
 function getSettings() {
@@ -275,6 +285,43 @@ function saveSettings() {
         "plant_count": parseInt(plantCountInput.value)
     }));
     toggleOverlay("settings");
+}
+
+function updateMoistureSensors(data) {
+    const container = document.getElementById('moisture-sensors-container');
+    const card = document.getElementById('moisture-card');
+    
+    if (!data.enabled || data.count === 0) {
+        card.style.display = 'none';
+        return;
+    }
+    
+    card.style.display = 'block';
+    container.innerHTML = '';
+    
+    data.sensors.forEach(sensor => {
+        const sensorDiv = document.createElement('div');
+        sensorDiv.className = 'moisture-sensor-item';
+        
+        const statusClass = sensor.isDry ? 'dry' : 'ok';
+        const statusText = sensor.isDry ? 'DRY' : 'OK';
+        
+        sensorDiv.innerHTML = `
+            <div class="sensor-header">
+                <span class="sensor-label">plant_</span>${sensor.id}
+                <span class="sensor-status ${statusClass}">${statusText}</span>
+            </div>
+            <div class="moisture-bar-container">
+                <div class="moisture-bar ${statusClass}" style="width: ${sensor.percent}%"></div>
+            </div>
+            <div class="sensor-details">
+                <span>${sensor.percent}%</span>
+                <span class="sensor-pin">Pin ${sensor.pin}</span>
+            </div>
+        `;
+        
+        container.appendChild(sensorDiv);
+    });
 }
 
 function showWiFiMessage(message, type) {

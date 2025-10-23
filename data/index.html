@@ -59,11 +59,12 @@
             <br />
 
             <div id="moistureSensorsWrapper">
-                <table>
-                    <tr><td data-translate="moisture_sensor_1">Moisture Sensor 1:</td><td><span id="sensor_1"></span> &percnt;</td></tr>
-                    <tr><td data-translate="moisture_sensor_2">Moisture Sensor 2:</td><td><span id="sensor_2"></span> &percnt;</td></tr>
-                    <tr><td data-translate="moisture_sensor_3">Moisture Sensor 3:</td><td><span id="sensor_3"></span> &percnt;</td></tr>
-                </table>
+                <div class="card" id="moisture-card" style="display: none;">
+                    <h2 data-translate="moisture_sensors">Moisture Sensors</h2>
+                    <div id="moisture-sensors-container">
+                        <!-- Moisture sensors will be inserted here dynamically -->
+                    </div>
+                </div>
 
                 <br />
             </div>

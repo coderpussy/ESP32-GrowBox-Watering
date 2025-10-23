@@ -1,9 +1,10 @@
 {
     "title": "Growbox Bewässerung",
     "automatic_watering": "Automatische Bewässerung:",
-    "moisture_sensor_1": "Feuchtigkeitssensor 1:",
-    "moisture_sensor_2": "Feuchtigkeitssensor 2:",
-    "moisture_sensor_3": "Feuchtigkeitssensor 3:",
+    "moisture_sensors": "Feuchtigkeitssensoren",
+    "moisture_level": "Feuchtigkeitslevel",
+    "sensor_status_ok": "OK",
+    "sensor_status_dry": "TROCKEN",
     "magnetic_valve_1": "Magnetventil 1:",
     "magnetic_valve_2": "Magnetventil 2:",
     "magnetic_valve_3": "Magnetventil 3:",

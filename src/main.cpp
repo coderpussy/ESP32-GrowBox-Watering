@@ -18,6 +18,7 @@
 #include "hardware/pin_manager.h"
 #include "hardware/valve_control.h"
 #include "hardware/pump_control.h"
+#include "hardware/moisture_sensor.h"
 #include "network/wifi_manager.h"
 #include "network/websocket_handler.h"
 #include "network/ntp_manager.h"
@@ -72,6 +73,7 @@ unsigned long timerDelay = 1000;
 
 static unsigned long lastJobCheck = 0;
 static unsigned long lastWiFiCheck = 0;
+static unsigned long lastMoistureCheck = 0;
 volatile bool otaUpdating = false;
 
 // Server and file paths
@@ -226,6 +228,7 @@ void setup() {
     
     pinMode(pumpPin, OUTPUT);
     pinMode(soilFlowSensorPin, INPUT_PULLUP);
+
     attachInterrupt(digitalPinToInterrupt(soilFlowSensorPin), pulseCounter, FALLING);
     
     digitalWrite(pumpPin, LOW);
@@ -285,6 +288,9 @@ void setup() {
     
     loadConfiguration(configfile);
     loadJobList(jobsfile);
+
+    // Initialize moisture sensors after loading config
+    initMoistureSensors();
 }
 
 void loop() {
@@ -325,7 +331,16 @@ void loop() {
                 lastTime = millis();
             }
         }
-        
+
+        // Periodic moisture sensor check (every 60 seconds)
+        if (now - lastMoistureCheck >= MOISTURE_CHECK_INTERVAL) {
+            // Read moisture sensors
+            readMoistureSensors();
+            // Inform clients about updated moisture readings
+            handleGetMoistureSensors();
+            lastMoistureCheck = now;
+        }
+
         processWebSerialQueue();
         handleNTPSync();
     } else {
