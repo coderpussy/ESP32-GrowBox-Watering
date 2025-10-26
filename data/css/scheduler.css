@@ -44,6 +44,11 @@
     cursor: pointer;
 }
 
+#time-fields, #moisture-fields {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
 input#job-duration + span::after {
     font-weight: bold;
     padding-left: 5px;

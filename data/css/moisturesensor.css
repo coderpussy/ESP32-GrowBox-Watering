@@ -1,11 +1,25 @@
 /* Moisture Sensor Styling */
-#moisture-card {
+#moistureSensorsWrapper {
     margin-top: 20px;
+    justify-content: center;
 }
 
-.moisture-sensors-container {
-    display: flex;
+#moisture-card {
     flex-direction: column;
+}
+
+#moisture-card > div {
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+#moisture-card > div:first-child {
+    text-align: center;
+}
+
+#moisture-sensors-container {
+    display: flex;
+    justify-content: center;
     gap: 15px;
 }
 
@@ -27,6 +41,11 @@
     font-weight: bold;
     font-size: 16px;
     color: #333;
+}
+
+.sensor-label:nth-child(2) {
+    margin-left: 5px;
+    margin-right: 5px;
 }
 
 .sensor-status {

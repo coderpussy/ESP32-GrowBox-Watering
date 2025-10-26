@@ -3,4 +3,5 @@
 #include <Arduino.h>
 
 void initializePins();
-void cleanupPins();
+void initializeValvePins();
+void initializeMoisturePins();

@@ -7,7 +7,7 @@
 extern const char* APP_VERSION;
 
 // Pin Definitions
-const int pumpPin = 33;
+const int pumpPin = 32;
 const int soilFlowSensorPin = 19;
 
 // Timing Constants
@@ -28,6 +28,9 @@ extern const char* timezone;
 const long ntpSyncInterval = 3600000; // 1 hour in milliseconds 60 * 60 * 1000
 const unsigned long ntpMaxWait = 10000;
 
+// Forward declaration
+struct MoistureSensorData;
+
 // Settings Structure
 struct Settings {
     bool use_webserial = false;
@@ -36,6 +39,14 @@ struct Settings {
     bool auto_switch = false;
     uint8_t plant_count = 3;
     int valve_start_pin = 25;
+    int moisture_start_pin = 33;
+};
+
+// Job trigger types
+enum JobTrigger {
+    TRIGGER_TIME = 0,      // Traditional time-based scheduling
+    TRIGGER_MOISTURE = 1,  // Moisture threshold based
+    TRIGGER_BOTH = 2       // Either condition triggers the job
 };
 
 // Job Structure
@@ -43,11 +54,13 @@ struct jobStruct {
     int id;
     bool active;
     char name[32];
-    char job[16];
-    char plant[16];
+    int plant;
     int duration;
     char starttime[20];
     bool everyday;
+    JobTrigger type;        // Job trigger type
+    uint8_t moisture_min;   // (0-100%)
+    uint8_t moisture_max;   // (0-100%)
 };
 
 // Job DateTime Structure
@@ -108,6 +121,7 @@ extern std::vector<jobStruct> joblistVec;
 extern std::vector<int> valvePins;
 extern std::vector<bool> valve_switches;
 extern std::vector<int> valveStates;
+extern std::vector<MoistureSensorData> moistureSensors;
 extern bool auto_switch;
 extern bool pump_switch;
 extern int pumpState;

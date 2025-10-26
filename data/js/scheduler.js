@@ -4,6 +4,8 @@ import { websocket } from "./index.js";
 
 const jobNameInput = document.getElementById("job-name");
 const jobselectInput = document.getElementById("job-select");
+const moistureMinInput = document.getElementById("moisture-min");
+const moistureMaxInput = document.getElementById("moisture-max");
 const plantselectInput = document.getElementById("plant-select");
 const jobDurationInput = document.getElementById("job-duration");
 const starttimeInput = document.getElementById("starttime");
@@ -17,6 +19,7 @@ deleteJoblistButton.addEventListener("click", deleteJoblist);
 addJobButton.addEventListener("click", addJob);
 saveJobsButton.addEventListener("click", saveJobs);
 jobList.addEventListener("click", doJobList);
+jobselectInput.addEventListener('change', toggleJobTriggerFields);
 
 // Edit index (-1 = not editing)
 let editIndex = -1;
@@ -38,8 +41,10 @@ function updateSaveButtonState() {
 function clearFormAndEditState() {
     editIndex = -1;
     jobNameInput.value = "";
-    jobselectInput.value = "watering";
-    plantselectInput.value = "all-plants";
+    jobselectInput.value = 0;
+    moistureMinInput.value = 0;
+    moistureMaxInput.value = 0;
+    plantselectInput.value = 0;
     jobDurationInput.value = "";
     starttimeInput.value = "";
     everydayInput.checked = false;
@@ -48,9 +53,11 @@ function clearFormAndEditState() {
 
 function populateFormFromJobItem(jobItem) {
     const name = jobItem.querySelector('.itemjobname').innerText || "";
-    const job = jobItem.querySelector('.itemjobselect').innerText || "watering";
-    const plant = jobItem.querySelector('.itemplantselect').innerText || "plant-1";
-    const durationText = jobItem.querySelector('.itemjobduration').innerText || "0";
+    const job = jobItem.querySelector('.itemjobselect').innerText || 0;
+    const moistureMin = jobItem.querySelector('.itemmoisturemin').innerText || 0;
+    const moistureMax = jobItem.querySelector('.itemmoisturemax').innerText || 0;
+    const plant = jobItem.querySelector('.itemplantselect').innerText || 0;
+    const durationText = jobItem.querySelector('.itemjobduration').innerText || 0;
     const starttime = jobItem.querySelector('.itemstarttime').innerText || "";
     const everydayText = jobItem.querySelector('.itemeveryday').innerText || "false";
 
@@ -63,8 +70,10 @@ function populateFormFromJobItem(jobItem) {
 
     jobNameInput.value = name;
     jobselectInput.value = job;
+    moistureMinInput.value = moistureMin;
+    moistureMaxInput.value = moistureMax;
     plantselectInput.value = plant;
-    jobDurationInput.value = parseInt(durationText) || "";
+    jobDurationInput.value = durationText;
     starttimeInput.value = starttime;
     everydayInput.checked = (everydayText === "true" || everydayText === "True");
 }
@@ -72,9 +81,9 @@ function populateFormFromJobItem(jobItem) {
 function updatePlantSelect(plantCount) {
     const plantSelect = document.getElementById('plant-select');
     plantSelect.innerHTML = `
-        <option value="all-plants" data-translate="all_plants">All Plants</option>
+        <option value="0" data-translate="all_plants">All Plants</option>
         ${Array.from({length: plantCount}, (_, i) => `
-            <option value="plant-${i+1}"><span data-translate="plant_">Plant</span> ${i+1}</option>
+            <option value="${i+1}"><span data-translate="plant_">Plant</span> ${i+1}</option>
         `).join('')}
     `;
 }
@@ -97,6 +106,8 @@ function startEdit(index) {
 function addJob() {
     const jobname = jobNameInput.value;
     const jobselect = jobselectInput.value;
+    const moistureMin = moistureMinInput.value;
+    const moistureMax = moistureMaxInput.value;
     const plantselect = plantselectInput.value;
     const jobduration = jobDurationInput.value;
     const starttime = starttimeInput.value;
@@ -108,17 +119,19 @@ function addJob() {
         return; // Don't add task if task or deadline is empty
     }
 
-    if (starttime === "" && !everyday) {
-        alert("Please select an upcoming date for the start time.");
-        return;
-    }
-
-    if (!everyday) {
-        const selectedDate = new Date(starttime);
-        const currentDate = new Date();
-        if ((selectedDate <= currentDate)) {
-            alert("Please select an upcoming date in the future for the start time.");
+    if (!jobselect == 1) { // If job type is time-based or both
+        if (starttime === "" && !everyday) {
+            alert("Please select an upcoming date for the start time.");
             return;
+        }
+
+        if (!everyday) {
+            const selectedDate = new Date(starttime);
+            const currentDate = new Date();
+            if ((selectedDate <= currentDate)) {
+                alert("Please select an upcoming date in the future for the start time.");
+                return;
+            }
         }
     }
 
@@ -145,6 +158,8 @@ function addJob() {
             //jobItem.querySelector('.activate').innerText = "Activate";
             jobItem.querySelector('.itemjobname').innerText = jobname;
             jobItem.querySelector('.itemjobselect').innerText = jobselect;
+            jobItem.querySelector('.itemmoisturemin').innerText = moistureMin;
+            jobItem.querySelector('.itemmoisturemax').innerText = moistureMax;
             jobItem.querySelector('.itemplantselect').innerText = plantselect;
             jobItem.querySelector('.itemjobduration').innerText = jobduration;
             jobItem.querySelector('.itemstarttime').innerText = starttime;
@@ -167,6 +182,8 @@ function addJob() {
     <button class="activate">Activate</button>
     <p><span data-translate="job_name">Name:</span><span class="itemjobname">${jobname}</span></p>
     <p><span data-translate="job_type">Job:</span><span class="itemjobselect">${jobselect}</span></p>
+    <p><span data-translate="moisture_min">Moisture Min:</span><span class="itemmoisturemin">${moistureMin}</span></p>
+    <p><span data-translate="moisture_max">Moisture Max:</span><span class="itemmoisturemax">${moistureMax}</span></p>
     <p><span data-translate="plant">Plant:</span><span class="itemplantselect">${plantselect}</span></p>
     <p><span data-translate="duration">Duration:</span><span class="itemjobduration">${jobduration}</span><span>sec.</span></p>
     <p><span data-translate="start_time">Start:</span><span class="itemstarttime">${starttime}</span></p>
@@ -209,7 +226,9 @@ function setJobList(data) {
         jobItem.innerHTML = `
             <button class="activate">${job.active ? "Active" : "Activate"}</button>
             <p><span data-translate="job_name">Name:</span><span class="itemjobname">${job.name}</span></p>
-            <p><span data-translate="job_type">Job:</span><span class="itemjobselect">${job.job}</span></p>
+            <p><span data-translate="job_type">Job:</span><span class="itemjobselect">${job.type}</span></p>
+            <p><span data-translate="moisture_min">Moisture Min:</span><span class="itemmoisturemin">${job.moistureMin}</span></p>
+            <p><span data-translate="moisture_max">Moisture Max:</span><span class="itemmoisturemax">${job.moistureMax}</span></p>
             <p><span data-translate="plant">Plant:</span><span class="itemplantselect">${job.plant}</span></p>
             <p><span data-translate="duration">Duration:</span><span class="itemjobduration">${job.duration}</span><span>sec.</span></p>
             <p><span data-translate="start_time">Start:</span><span class="itemstarttime">${job.starttime}</span></p>
@@ -234,17 +253,19 @@ async function saveJobs() {
         let id = i;
         let active = collection[i].querySelector('button').innerText || "Active";
         let name = collection[i].querySelector('.itemjobname').innerText || "";
-        let job = collection[i].querySelector('.itemjobselect').innerText || "";
-        let plant = collection[i].querySelector('.itemplantselect').innerText || "";
+        let type = parseInt(collection[i].querySelector('.itemjobselect').innerText) || 0;
+        let moistureMin = parseInt(collection[i].querySelector('.itemmoisturemin').innerText) || 0;
+        let moistureMax = parseInt(collection[i].querySelector('.itemmoisturemax').innerText) || 0;
+        let plant = parseInt(collection[i].querySelector('.itemplantselect').innerText) || 0;
         let duration = parseInt(collection[i].querySelector('.itemjobduration').innerText) || 0;
         let starttime = collection[i].querySelector('.itemstarttime').innerText || "";
         let everyday = collection[i].querySelector('.itemeveryday').innerText === "true";
 
         active = active === "Active" ? true : false;
 
-        console.log(JSON.stringify({"action":"addjobtolist","id":id,"active":active,"name":name,"job":job,"plant":plant,"duration":duration,"starttime":starttime,"everyday":everyday}));
-        
-        websocket.send(JSON.stringify({"action":"addjobtolist","id":id,"active":active,"name":name,"job":job,"plant":plant,"duration":duration,"starttime":starttime,"everyday":everyday}));
+        console.log(JSON.stringify({"action":"addjobtolist","id":id,"active":active,"name":name,"type":type,"moistureMin":moistureMin,"moistureMax":moistureMax,"plant":plant,"duration":duration,"starttime":starttime,"everyday":everyday}));
+
+        websocket.send(JSON.stringify({"action":"addjobtolist","id":id,"active":active,"name":name,"type":type,"moistureMin":moistureMin,"moistureMax":moistureMax,"plant":plant,"duration":duration,"starttime":starttime,"everyday":everyday}));
         await sleep(200);
     }
 
@@ -291,4 +312,34 @@ function doJobList(event) {
     }
 }
 
-export { setJobList, updatePlantSelect };
+function toggleJobTriggerFields() {
+    const triggerType = parseInt(document.getElementById('job-select').value);
+    const timeFields = document.getElementById('time-fields');
+    const timeField = document.getElementById('starttime');
+    const everyDayField = document.getElementById('everyday');
+    const everyDayLabel = document.getElementById('everyday-label');
+    const moistureFields = document.getElementById('moisture-fields');
+    
+    switch(triggerType) {
+        case 0: // Time only
+            timeFields.style.display = 'flex';
+            timeField.style.display = 'inline-block';
+            everyDayField.style.display = 'inline-block';
+            everyDayLabel.style.display = 'inline-block';
+            moistureFields.style.display = 'none';
+            break;
+        case 1: // Moisture only
+            timeFields.style.display = 'none';
+            moistureFields.style.display = 'flex';
+            break;
+        case 2: // Both
+            timeFields.style.display = 'flex';
+            timeField.style.display = 'none';
+            everyDayField.style.display = 'none';
+            everyDayLabel.style.display = 'none';
+            moistureFields.style.display = 'flex';
+            break;
+    }
+}
+
+export { setJobList, updatePlantSelect, toggleJobTriggerFields };

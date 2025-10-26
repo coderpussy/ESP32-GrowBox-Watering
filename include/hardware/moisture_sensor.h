@@ -10,13 +10,11 @@ struct MoistureSensorData {
     bool isDry;
 };
 
-void initMoistureSensors();
 void readMoistureSensors();
 std::vector<MoistureSensorData> getMoistureSensorData();
 int mapMoistureToPercent(int analogValue);
 
 extern std::vector<MoistureSensorData> moistureSensors;
-extern const int MOISTURE_SENSOR_START_PIN;
 extern const int DRY_ANALOG_VALUE;
 extern const int WET_ANALOG_VALUE;
 extern const int DRY_PERCENT;

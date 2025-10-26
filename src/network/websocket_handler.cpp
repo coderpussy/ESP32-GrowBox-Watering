@@ -74,9 +74,11 @@ void handleSaveSettings(const JsonDocument& json) {
     if (settings.auto_switch) auto_switch = settings.auto_switch;
     
     uint8_t new_count = json["plant_count"] | 3;
-    if (new_count != settings.plant_count) {
+    if (new_count != settings.plant_count || settings.use_flowsensor || settings.use_moisturesensor) {
         settings.plant_count = new_count;
         initializePins();
+        initializeValvePins();
+        initializeMoisturePins();
     }
 
     saveConfiguration(configfile);
@@ -88,7 +90,7 @@ void handleGetJobList() {
     
     const size_t capacity = JSON_OBJECT_SIZE(2) +
                            JSON_ARRAY_SIZE(arrayCount) +
-                           (arrayCount * JSON_OBJECT_SIZE(8)) +
+                           (arrayCount * JSON_OBJECT_SIZE(10)) +
                            (arrayCount * 128);
     
     DynamicJsonDocument doc(capacity);
@@ -102,7 +104,9 @@ void handleGetJobList() {
         obj["id"] = job.id;
         obj["active"] = job.active;
         obj["name"] = job.name;
-        obj["job"] = job.job;
+        obj["type"] = job.type;
+        obj["moisture_min"] = job.moisture_min;
+        obj["moisture_max"] = job.moisture_max;
         obj["plant"] = job.plant;
         obj["duration"] = job.duration;
         obj["starttime"] = job.starttime;
@@ -138,8 +142,11 @@ void handleAddJobToList(const JsonDocument& json) {
     newJob.id = newId;
     newJob.active = json["active"] | false;
     strlcpy(newJob.name, json["name"] | "", sizeof(newJob.name));
-    strlcpy(newJob.job, json["job"] | "", sizeof(newJob.job));
-    strlcpy(newJob.plant, json["plant"] | "", sizeof(newJob.plant));
+    int triggerType = json["type"] | 0;
+    newJob.type = static_cast<JobTrigger>(triggerType);
+    newJob.moisture_min = json["moisture_min"] | 20; // Default 20%
+    newJob.moisture_max = json["moisture_max"] | 80; // Default 80%
+    newJob.plant = json["plant"] | 0;
     newJob.duration = json["duration"] | 0;
     strlcpy(newJob.starttime, json["starttime"] | "", sizeof(newJob.starttime));
     newJob.everyday = json["everyday"] | false;

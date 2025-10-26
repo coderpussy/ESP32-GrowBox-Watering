@@ -246,7 +246,7 @@ function onMessage(event) {
             }
             // Show/hide moisture sensor settings based on use_moisturesensor
             if (use_moisturesensor.checked) {
-                document.querySelector("#moistureSensorsWrapper").style.display = "block";
+                document.querySelector("#moistureSensorsWrapper").style.display = "flex";
             } else {
                 document.querySelector("#moistureSensorsWrapper").style.display = "none";
             }
@@ -296,7 +296,7 @@ function updateMoistureSensors(data) {
         return;
     }
     
-    card.style.display = 'block';
+    card.style.display = 'flex';
     container.innerHTML = '';
     
     data.sensors.forEach(sensor => {
@@ -308,8 +308,8 @@ function updateMoistureSensors(data) {
         
         sensorDiv.innerHTML = `
             <div class="sensor-header">
-                <span class="sensor-label">plant_</span>${sensor.id}
-                <span class="sensor-status ${statusClass}">${statusText}</span>
+                <span class="sensor-label" data-translate="plant_">Plant</span> <span class="sensor-label">${sensor.id}</span>
+                <span class="sensor-status ${statusClass}" data-translate="${statusText}">${statusText}</span>
             </div>
             <div class="moisture-bar-container">
                 <div class="moisture-bar ${statusClass}" style="width: ${sensor.percent}%"></div>

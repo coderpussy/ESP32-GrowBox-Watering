@@ -60,7 +60,7 @@
 
             <div id="moistureSensorsWrapper">
                 <div class="card" id="moisture-card" style="display: none;">
-                    <h2 data-translate="moisture_sensors">Moisture Sensors</h2>
+                    <div data-translate="moisture_sensors">Moisture Sensors</div>
                     <div id="moisture-sensors-container">
                         <!-- Moisture sensors will be inserted here dynamically -->
                     </div>
@@ -121,18 +121,28 @@
                         <div class="job-form">
                             <input type="text" id="job-name" data-translate="job_name_placeholder" placeholder="Enter job name...">
                             <select id="job-select">
-                                <option value="watering" data-translate="watering">Watering</option>
+                                <option value="0" data-translate="timebased">Time-based</option>
+                                <option value="1" data-translate="moisturesensor">Moisture Sensor</option>
+                                <option value="2" data-translate="both">Both (Time OR Moisture)</option>
                             </select>
                             <select id="plant-select">
-                                <option value="all-plants" data-translate="all_plants">All Plants</option>
-                                <option value="plant-1" data-translate="plant_1">Plant 1</option>
-                                <option value="plant-2" data-translate="plant_2">Plant 2</option>
-                                <option value="plant-3" data-translate="plant_3">Plant 3</option>
+                                <option value="0" data-translate="all_plants">All Plants</option>
+                                <option value="1" data-translate="plant_1">Plant 1</option>
+                                <option value="2" data-translate="plant_2">Plant 2</option>
+                                <option value="3" data-translate="plant_3">Plant 3</option>
                             </select>
-                            <input type="number" id="job-duration" min="2" max="120" data-translate="job_duration_placeholder" placeholder="e.g. 90" style="width: 70px;" required />
-                            <span data-translate="seconds">sec.</span><span class="validity"></span>
-                            <input type="datetime-local" id="starttime">
-                            <input id="everyday" type="checkbox" /><span data-translate="every_day">all days</span>
+                            <div id="time-fields">
+                                <input type="number" id="job-duration" min="2" max="120" data-translate="job_duration_placeholder" placeholder="e.g. 90" style="width: 70px;" required />
+                                <span data-translate="seconds">sec.</span><span class="validity"></span>
+                                <input type="datetime-local" id="starttime">
+                                <input id="everyday" type="checkbox" /><span data-translate="every_day" id="everyday-label">all days</span>
+                            </div>
+                            <div id="moisture-fields" style="display: none;">
+                                <span>Min.</span><input type="number" id="moisture-min" min="0" data-translate="moisture_min_placeholder" placeholder="e.g. 30" style="width: 70px;" required />
+                                <span>%</span>
+                                <span>Max.</span><input type="number" id="moisture-max" min="0" data-translate="moisture_max_placeholder" placeholder="e.g. 80" style="width: 70px;" required />
+                                <span>%</span>
+                            </div>
                             <input id="add-job" type="button" class="button" data-translate="add_job" value="Add Job" />
                         </div>
                         <div class="job-list" id="job-list">

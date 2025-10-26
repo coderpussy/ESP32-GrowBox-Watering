@@ -217,7 +217,6 @@ void handleResetWiFi(AsyncWebServerRequest *request) {
 }
 
 void setup() {
-    initializePins();
     initLogger();
     
     Serial.printf("Application version: %s\n", APP_VERSION);
@@ -226,13 +225,24 @@ void setup() {
     initWiFi(); // Custom WiFi Manager
     initWebSocket();
     
-    pinMode(pumpPin, OUTPUT);
-    pinMode(soilFlowSensorPin, INPUT_PULLUP);
+    // Load configuration
+    loadConfiguration(configfile);
+
+    // Initialize hardware pins
+    initializePins();
+    initializeValvePins();
+    initializeMoisturePins();
+
+    // Load job list
+    loadJobList(jobsfile);
+
+    //pinMode(pumpPin, OUTPUT);
+    //pinMode(soilFlowSensorPin, INPUT_PULLUP);
 
     attachInterrupt(digitalPinToInterrupt(soilFlowSensorPin), pulseCounter, FALLING);
     
-    digitalWrite(pumpPin, LOW);
-    delay(50);
+    //digitalWrite(pumpPin, LOW);
+    //delay(50);
     
     pumpState = digitalRead(pumpPin);
     
@@ -285,12 +295,6 @@ void setup() {
     ntpCtx.state = NTP_INIT;
     ntpCtx.stateTime = millis();
     ntpCtx.syncInProgress = true;
-    
-    loadConfiguration(configfile);
-    loadJobList(jobsfile);
-
-    // Initialize moisture sensors after loading config
-    initMoistureSensors();
 }
 
 void loop() {

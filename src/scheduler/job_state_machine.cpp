@@ -14,7 +14,7 @@ void processJob(const jobStruct& job) {
     currentJobState = JOB_OPEN_VALVE;
     jobStateTimestamp = millis();
     jobActive = true;
-    logThrottled("Start background job: %s for plant: %s", job.job, job.plant);
+    logThrottled("Start background job: %s for plant: %s", job.type, job.plant);
 }
 
 void handleJobStateMachine() {
@@ -26,9 +26,8 @@ void handleJobStateMachine() {
             break;
             
         case JOB_OPEN_VALVE: {
-            int plantNum = 0;
-            sscanf(runningJob.plant, "plant-%d", &plantNum);
-            plantNum--;
+            uint8_t plantNum = runningJob.plant;
+            //sscanf(runningJob.plant, "plant-%d", &plantNum);
             
             if (plantNum >= 0 && plantNum < settings.plant_count) {
                 handleValveSwitch(plantNum);
@@ -75,9 +74,8 @@ void handleJobStateMachine() {
             
         case JOB_STOP_PUMP:
             if (now - jobStateTimestamp >= 750) {
-                int plantNum = 0;
-                sscanf(runningJob.plant, "plant-%d", &plantNum);
-                plantNum--;
+                uint8_t plantNum = runningJob.plant;
+                //sscanf(runningJob.plant, "plant-%d", &plantNum);
                 
                 if (plantNum >= 0 && plantNum < settings.plant_count) {
                     handleValveSwitch(plantNum);

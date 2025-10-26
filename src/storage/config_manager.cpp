@@ -28,8 +28,6 @@ void loadConfiguration(const char* configfile) {
         settings.plant_count = doc["plant_count"] | 3;
 
         if (settings.auto_switch) auto_switch = settings.auto_switch;
-        
-        initializePins();
 
         logThrottled("Configuration loaded - Plants: %d, AutoSwitch: %d",
             settings.plant_count, settings.auto_switch);
