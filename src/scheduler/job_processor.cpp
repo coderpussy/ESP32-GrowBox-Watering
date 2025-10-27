@@ -173,8 +173,14 @@ void jobsProcessor() {
         }
 
         if (shouldTrigger) {
-            logThrottled("Job %d triggered (%s) - valve %d, duration %.1fs",
+            if (job.duration > 0) {
+                logThrottled("Job %d triggered (%s) - valve %d, duration %.1fs",
                          job.id, triggerReason, job.plant + 1, job.duration);
+            }
+            if (job.volume > 0) {
+                logThrottled("Job %d triggered (%s) - valve %d, volume %dml",
+                         job.id, triggerReason, job.plant + 1, job.volume);
+            }
 
             if (jobActive) {
                 logThrottled("Job %d due but another job active - skipping", job.id);

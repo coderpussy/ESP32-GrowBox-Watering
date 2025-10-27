@@ -55,6 +55,7 @@ struct jobStruct {
     bool active;
     char name[32];
     int plant;
+    int volume;             // in milliliters
     int duration;
     char starttime[20];
     bool everyday;

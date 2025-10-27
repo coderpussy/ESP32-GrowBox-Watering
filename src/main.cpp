@@ -121,10 +121,6 @@ void handleNotFound(AsyncWebServerRequest *request) {
     request->send(404, "text/plain", "File Not Found\n\n");
 }
 
-/*void handleWiFiManager(AsyncWebServerRequest *request) {
-    request->send(LittleFS, "/wifimanager.html", "text/html");
-}*/
-
 void handleScan(AsyncWebServerRequest *request) {
     // Check if a scan is already running
     int scanStatus = WiFi.scanComplete();
@@ -236,19 +232,17 @@ void setup() {
     // Load job list
     loadJobList(jobsfile);
 
-    //pinMode(pumpPin, OUTPUT);
-    //pinMode(soilFlowSensorPin, INPUT_PULLUP);
-
+    // Setup flow sensor interrupt
     attachInterrupt(digitalPinToInterrupt(soilFlowSensorPin), pulseCounter, FALLING);
     
-    //digitalWrite(pumpPin, LOW);
-    //delay(50);
-    
+    // Read initial pump state
     pumpState = digitalRead(pumpPin);
     
+    // Setup WebSerial
     WebSerial.begin(&server);
     WebSerial.onMessage(recvMsg);
     
+    // Setup ArduinoOTA
     ArduinoOTA.setHostname("GrowboxWatering");
     ArduinoOTA.onStart([]() {
         otaUpdating = true;
@@ -273,7 +267,6 @@ void setup() {
     ArduinoOTA.begin();
     
     // Add WiFi Manager routes
-    //server.on("/wifimanager", HTTP_GET, handleWiFiManager);
     server.on("/scan", HTTP_GET, handleScan);
     server.on("/scan-results", HTTP_GET, handleScanResults);
     server.on("/connect", HTTP_POST, handleConnect);
@@ -287,11 +280,14 @@ void setup() {
     server.serveStatic("/css/", LittleFS, "/css/");
     server.serveStatic("/lang/", LittleFS, "/lang/");
     
+    // Add WebSocket handler
     server.addHandler(&ws);
+    // Start server
     server.begin();
     
     logThrottled("HTTP server started");
     
+    // Initialize NTP
     ntpCtx.state = NTP_INIT;
     ntpCtx.stateTime = millis();
     ntpCtx.syncInProgress = true;

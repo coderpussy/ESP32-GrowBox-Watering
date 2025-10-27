@@ -90,7 +90,7 @@ void handleGetJobList() {
     
     const size_t capacity = JSON_OBJECT_SIZE(2) +
                            JSON_ARRAY_SIZE(arrayCount) +
-                           (arrayCount * JSON_OBJECT_SIZE(10)) +
+                           (arrayCount * JSON_OBJECT_SIZE(11)) +
                            (arrayCount * 128);
     
     DynamicJsonDocument doc(capacity);
@@ -108,6 +108,7 @@ void handleGetJobList() {
         obj["moisture_min"] = job.moisture_min;
         obj["moisture_max"] = job.moisture_max;
         obj["plant"] = job.plant;
+        obj["volume"] = job.volume;
         obj["duration"] = job.duration;
         obj["starttime"] = job.starttime;
         obj["everyday"] = job.everyday;
@@ -147,6 +148,7 @@ void handleAddJobToList(const JsonDocument& json) {
     newJob.moisture_min = json["moisture_min"] | 20; // Default 20%
     newJob.moisture_max = json["moisture_max"] | 80; // Default 80%
     newJob.plant = json["plant"] | 0;
+    newJob.volume = json["volume"] | 0;
     newJob.duration = json["duration"] | 0;
     strlcpy(newJob.starttime, json["starttime"] | "", sizeof(newJob.starttime));
     newJob.everyday = json["everyday"] | false;
@@ -207,7 +209,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
     AwsFrameInfo *info = (AwsFrameInfo*)arg;
 
     if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
-        const uint8_t size = JSON_OBJECT_SIZE(9);
+        const size_t size = JSON_OBJECT_SIZE(11) + 256;
         StaticJsonDocument<size> json;
         DeserializationError err = deserializeJson(json, data);
 

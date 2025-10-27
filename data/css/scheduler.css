@@ -44,20 +44,24 @@
     cursor: pointer;
 }
 
-#time-fields, #moisture-fields {
+#time-fields, #moisture-fields, #container-max, #container-min {
     display: flex;
     align-items: center;
     gap: 10px;
 }
-input#job-duration + span::after {
+
+input#job-duration + span::after,
+input#job-volume + span::after {
     font-weight: bold;
     padding-left: 5px;
 }
-input#job-duration:invalid + span::after {
+input#job-duration:invalid + span::after,
+input#job-volume:invalid + span::after {
     content: "✖";
     color: red;
 }
-input#job-duration:valid + span::after {
+input#job-duration:valid + span::after,
+input#job-volume:valid + span::after {
     content: "✓";
     color: green;
 }

@@ -78,6 +78,7 @@ void loadJobList(const char* jobsfile) {
             job.moisture_min = obj["moisture_min"] | 20; // Default 20%
             job.moisture_max = obj["moisture_max"] | 80; // Default 80%
             job.plant = obj["plant"] | 0;
+            job.volume = obj["volume"] | 0;
             job.duration = obj["duration"] | 0;
             strlcpy(job.starttime, obj["starttime"] | "", sizeof(job.starttime));
             job.everyday = obj["everyday"] | false;
@@ -110,7 +111,7 @@ void saveJobList(const char* jobsfile) {
     }
 
     const size_t capacity = JSON_ARRAY_SIZE(joblen) + 
-                          (joblen * JSON_OBJECT_SIZE(10)) +
+                          (joblen * JSON_OBJECT_SIZE(11)) +
                           (joblen * 128);
     
     DynamicJsonDocument doc(capacity);
@@ -127,6 +128,7 @@ void saveJobList(const char* jobsfile) {
         obj["moisture_min"] = job.moisture_min;
         obj["moisture_max"] = job.moisture_max;
         obj["plant"] = job.plant;
+        obj["volume"] = job.volume;
         obj["duration"] = job.duration;
         obj["starttime"] = job.starttime;
         obj["everyday"] = job.everyday;
