@@ -10,21 +10,23 @@
 .job-list {
     border: 1px solid #ddd;
     border-radius: 5px;
-    padding: 10px;
     margin-bottom: 20px;
+    display: grid;
+    gap: 1rem;
+    padding: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 250px));
 }
 
 .job {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    padding: 5px;
+    padding: 10px;
     border: 1px solid #ccc;
     border-radius: 5px;
+    width: 250px;
 }
-.job:not(:last-child) {
-    margin-bottom: 10px;
+.job p {
+    display: block;
+    margin: 8px;
+    font-size: small;
 }
 .job button {
     width: 70px;
@@ -39,6 +41,9 @@
 }
 .job p:not(:last-child) span {
     padding-left: 3px;
+}
+.job p:last-child {
+    text-align: end;
 }
 .job .itemdelete, .job .itemedit {
     cursor: pointer;

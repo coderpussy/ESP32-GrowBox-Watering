@@ -25,9 +25,6 @@ jobselectInput.addEventListener('change', toggleJobTriggerFields);
 // Edit index (-1 = not editing)
 let editIndex = -1;
 
-// Get job list to check if there are jobs to enable/disable save button
-const jobListCheck = document.getElementById("job-list");
-
 // Initial button state
 updateSaveButtonState();
 // Initial job trigger fields state
@@ -35,7 +32,7 @@ toggleJobTriggerFields();
 
 // Function to update save button state
 function updateSaveButtonState() {
-    const hasJobs = jobListCheck.children.length > 0;
+    const hasJobs = jobList.children.length > 0;
     saveJobsButton.disabled = !hasJobs;
     saveJobsButton.style.opacity = hasJobs ? "1" : "0.5";
     saveJobsButton.style.cursor = hasJobs ? "pointer" : "not-allowed";
