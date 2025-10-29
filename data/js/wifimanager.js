@@ -1,3 +1,5 @@
+import { setLanguage, currentLanguage } from "./language.js";
+
 function showWiFiMessage(message, type) {
     const messageDiv = document.getElementById('wifi-message');
     messageDiv.textContent = message;

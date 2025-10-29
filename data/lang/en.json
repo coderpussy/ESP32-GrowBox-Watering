@@ -16,6 +16,8 @@
     "job_scheduler": "Job Scheduler",
     "moisture_min_placeholder": "e.g. 30",
     "moisture_max_placeholder": "e.g. 80",
+    "moisture_min": "Moisture Min:",
+    "moisture_max": "Moisture Max:",
     "timebased": "Time-based",
     "moisturesensor": "Moisture Sensor",
     "plant_count": "Number of Plants:",
@@ -61,5 +63,7 @@
     "password": "Password:",
     "connect": "Connect",
     "connecting": "Connecting...",
-    "reset_wifi": "Reset WiFi Settings"
+    "reset_wifi": "Reset WiFi Settings",
+    "yes": "Yes",
+    "no": "No"
 }

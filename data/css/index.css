@@ -134,77 +134,6 @@ select {
 .topnav .box2 > div:nth-child(5) {
     margin-right: 1.5em;
 }
-/*
-.slider {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 75%;
-    height: 20px;
-    border-radius: 10px;
-    background: #d3d3d3;
-    outline: none;
-    opacity: 0.7;
-    -webkit-transition: .2s;
-    transition: opacity .2s;
-}
-
-.slider:hover {
-    opacity: 1;
-}
-
-.slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: #0fc0c0;
-    cursor: pointer;
-}
-
-.slider::-moz-range-thumb {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: #0fc0c0;
-    cursor: pointer;
-}*/
-
-/* Manual control buttons CSS style definition */
-/*.control-button {
-    width: 4em;
-    height: 4em;
-    background: #4f4f4f;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-.control-top,
-.control-middle,
-.control-bottom,
-.control-button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.control-top {
-    margin-bottom: 1.5em;
-}
-
-.control-middle .left,
-.control-middle .right,
-.control-middle .center {
-    display: inline-block;
-}
-.control-middle .center {
-    margin-left: 1.5em;
-    margin-right: 1.5em;
-}
-
-.control-bottom {
-    margin-top: 1.5em;
-}*/
 
 /* Form elements common CSS styles */
 fieldset {
@@ -218,29 +147,6 @@ fieldset {
     align-items: center;
     flex: 1;
 }
-/*.control-input .dish-position,
-.control-input .saved-positions,
-.control-input .manual-control {
-    width: 100%;
-    display: flex;
-    align-items: center;
-}
-.control-input .dish-position > div:first-child,
-.control-input .dish-position > div:last-child {
-    flex: 1;
-}
-.control-input .saved-positions {
-    justify-content: space-between;
-}
-.control-input .saved-positions select {
-    width: 50%;
-}
-.control-input .saved-positions button {
-    padding: 12px 10px;
-}
-.control-input .manual-control {
-    justify-content: space-between;
-}*/
 
 /* Formcontrols default CSS style definition */
 div.formcontrols {
@@ -418,7 +324,6 @@ input#pump_switch:checked + .pump-slider:before {
     border-top: var(--size) solid #fff;
     top: 55%;
 }
-
 
 
 

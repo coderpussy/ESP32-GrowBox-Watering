@@ -1,9 +1,7 @@
 // Import necessary modules
+import { setLanguage, currentLanguage } from "./language.js";
 import { scanNetworks, connectToWiFi, resetWiFi } from "./wifimanager.js";
 import { setJobList, updatePlantSelect } from "./scheduler.js";
-
-// Default language
-export let currentLanguage = 'en';
 
 // Initialization
 var gateway = `ws://${window.location.hostname}/ws`;
@@ -89,33 +87,6 @@ resetCounterBtn.addEventListener('click', resetCounter);
 const saveSettingsBtn = document.getElementById("savesettings");
 saveSettingsBtn.addEventListener('click', saveSettings);
 
-async function loadLanguage(lang) {
-    const response = await fetch(`./lang/${lang}.json`);
-    const translations = await response.json();
-    return translations;
-}
-
-export async function setLanguage(lang) {
-    currentLanguage = lang;
-    const translations = await loadLanguage(lang);
-    applyTranslations(translations);
-}
-
-function applyTranslations(translations) {
-    document.querySelectorAll('[data-translate]').forEach(element => {
-        const key = element.getAttribute('data-translate');
-        if (translations[key]) {
-            // Check if the element is an input or button
-            if (element.tagName === 'INPUT' && element.type === 'button') {
-                element.value = translations[key]; // Update button value
-            } else if (element.tagName === 'INPUT' && element.hasAttribute('placeholder')) {
-                element.placeholder = translations[key]; // Update placeholder text
-            } else {
-                element.innerText = translations[key]; // Update inner text for other elements
-            }
-        }
-    });
-}
 
 function initToggleOverlay() {
     const overlaycalendar = document.querySelector('#overlay-calendar');
@@ -168,7 +139,7 @@ function initWebSocket() {
 }
 
 function onload(event) {
-    initWebSocket();
+    //initWebSocket();
     initToggleOverlay();
     setLanguage(currentLanguage); // Set default language on load
 }

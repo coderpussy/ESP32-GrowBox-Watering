@@ -14,21 +14,23 @@
     display: grid;
     gap: 1rem;
     padding: 1rem;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 250px));
+    grid-template-columns: repeat(auto-fill, minmax(230px, 230px));
 }
 
 .job {
     padding: 10px;
     border: 1px solid #ccc;
     border-radius: 5px;
-    width: 250px;
+    width: 230px;
 }
 .job p {
-    display: block;
-    margin: 8px;
+    display: flex;
+    justify-content: space-between;
+    margin: 6px;
     font-size: small;
 }
 .job button {
+    margin: 6px;
     width: 70px;
     background-color: #287fa7;
     color: white;
@@ -39,14 +41,37 @@
 .job button.active {
     background-color: #28a745;
 }
+.job p:nth-child(even) {
+    background: linear-gradient(45deg, #6e665a, transparent);
+}
+.job p:nth-child(odd) {
+    background: linear-gradient(45deg, #707070, transparent);
+}
 .job p:not(:last-child) span {
     padding-left: 3px;
 }
 .job p:last-child {
+    justify-content: end;
     text-align: end;
+    background: unset;
 }
 .job .itemdelete, .job .itemedit {
+    border-radius: 50%;
+    margin-right: 10px;
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+    text-align: center;
+    line-height: 30px;
+    font-size: large;
     cursor: pointer;
+}
+.job .itemedit {
+    background: linear-gradient(45deg, #247b8f, transparent);
+}
+.job .itemdelete {
+    margin-right: unset;
+    background: linear-gradient(45deg, #7c3b26, transparent);
 }
 
 #time-fields, #moisture-fields, #container-max, #container-min {
@@ -63,12 +88,12 @@ input#job-volume + span::after {
 input#job-duration:invalid + span::after,
 input#job-volume:invalid + span::after {
     content: "✖";
-    color: red;
+    color: #7c3b26;
 }
 input#job-duration:valid + span::after,
 input#job-volume:valid + span::after {
     content: "✓";
-    color: green;
+    color: #019901;
 }
 
 .manage-job-list {

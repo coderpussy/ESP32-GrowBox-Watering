@@ -16,6 +16,8 @@
     "job_scheduler": "Job-Planer",
     "moisture_min_placeholder": "z.B. 30",
     "moisture_max_placeholder": "z.B. 80",
+    "moisture_min": "Feuchtigkeit Min:",
+    "moisture_max": "Feuchtigkeit Max:",
     "timebased": "Zeitbasiert",
     "moisturesensor": "Feuchtigkeitssensor",
     "plant_count": "Anzahl der Pflanzen:",
@@ -61,5 +63,7 @@
     "password": "Passwort:",
     "connect": "Verbinden",
     "connecting": "Verbinde...",
-    "reset_wifi": "WiFi-Einstellungen zurücksetzen"
+    "reset_wifi": "WiFi-Einstellungen zurücksetzen",
+    "yes": "Ja",
+    "no": "Nein"
 }
