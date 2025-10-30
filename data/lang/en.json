@@ -20,6 +20,7 @@
     "moisture_max": "Moisture Max:",
     "timebased": "Time-based",
     "moisturesensor": "Moisture Sensor",
+    "time_moisture": "Time & Moisture",
     "plant_count": "Number of Plants:",
     "plant_count_warning": "Changing plant count will reset all valve and sensor assignments",
     "all_plants": "All Plants",
@@ -33,7 +34,7 @@
     "future_date": "Please select an upcoming date in the future for the start time.",
     "save_jobs": "Save Jobs",
     "add_job": "Add Job",
-    "every_day": "all days",
+    "every_day": "every day",
     "every_day_label": "Every day:",
     "job_name_placeholder": "Enter job name...",
     "job_name": "Name:",
@@ -65,5 +66,6 @@
     "connecting": "Connecting...",
     "reset_wifi": "Reset WiFi Settings",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "--": "--"
 }

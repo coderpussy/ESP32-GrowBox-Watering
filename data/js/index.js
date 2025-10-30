@@ -139,7 +139,7 @@ function initWebSocket() {
 }
 
 function onload(event) {
-    //initWebSocket();
+    initWebSocket();
     initToggleOverlay();
     setLanguage(currentLanguage); // Set default language on load
 }
@@ -293,6 +293,8 @@ function updateMoistureSensors(data) {
         `;
         
         container.appendChild(sensorDiv);
+        // Re-apply translations to new elements
+        setLanguage(currentLanguage);
     });
 }
 

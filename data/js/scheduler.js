@@ -191,13 +191,13 @@ function addJob() {
     switch(parseInt(jobselect)) {
         case 0: jobselectText = "timebased"; break;
         case 1: jobselectText = "moisturesensor"; break;
-        case 2: jobselectText = "both"; break;
+        case 2: jobselectText = "time_moisture"; break;
     }
     // Set "--" to separated text variables in case of any of 
     // jobvolume or jobduration or starttime or every day or moisture min or moisture max is empty
     let jobvolumeText = jobvolume ? "" : "--";
     let jobdurationText = jobduration ? "" : "--";
-    let starttimeText = starttime ? "" : "--";
+    let starttimeText = starttime ? new Date(starttime).toLocaleString() : "--";
     let everydayText = jobselect == 0 ? everyday ? "yes" : "no" : "--";
     let moistureMinText = moistureMin ? "" : "--";
     let moistureMaxText = moistureMax ? "" : "--";
@@ -253,14 +253,14 @@ function setJobList(data) {
         switch(parseInt(job.type)) {
             case 0: jobTypeText = "timebased"; break;
             case 1: jobTypeText = "moisturesensor"; break;
-            case 2: jobTypeText = "both"; break;
+            case 2: jobTypeText = "time_moisture"; break;
         }
         // Set "--" to separated text variables in case of any of 
         // jobvolume or jobduration or starttime or every day or moisture min or moisture max is empty
         let jobvolumeText = job.volume ? "" : "--";
         let jobdurationText = job.duration ? "" : "--";
         let everydayText = jobselect == 0 ? job.everyday ? "yes" : "no" : "--";
-        let starttimeText = job.starttime ? "" : "--";
+        let starttimeText = job.starttime ? new Date(job.starttime).toLocaleString() : "--";
         let moistureMinText = job.moistureMin ? "" : "--";
         let moistureMaxText = job.moistureMax ? "" : "--";
 

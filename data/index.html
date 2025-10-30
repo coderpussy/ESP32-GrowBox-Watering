@@ -123,7 +123,7 @@
                             <select id="job-select">
                                 <option value="0" data-translate="timebased">Time-based</option>
                                 <option value="1" data-translate="moisturesensor">Moisture Sensor</option>
-                                <option value="2" data-translate="both">Both (Time OR Moisture)</option>
+                                <option value="2" data-translate="time_moisture">Time & Moisture</option>
                             </select>
                             <select id="plant-select">
                                 <option value="0" data-translate="all_plants">All Plants</option>
@@ -137,7 +137,7 @@
                                 <input type="number" id="job-duration" min="2" max="120" data-translate="job_duration_placeholder" placeholder="e.g. 90" style="width: 70px;" required />
                                 <span data-translate="seconds">sec.</span><span class="validity"></span>
                                 <input type="datetime-local" id="starttime">
-                                <input id="everyday" type="checkbox" /><span data-translate="every_day" id="everyday-label">all days</span>
+                                <input id="everyday" type="checkbox" /><span data-translate="every_day" id="everyday-label">every day</span>
                             </div>
                             <div id="moisture-fields">
                                 <span id="container-min">

@@ -20,6 +20,7 @@
     "moisture_max": "Feuchtigkeit Max:",
     "timebased": "Zeitbasiert",
     "moisturesensor": "Feuchtigkeitssensor",
+    "time_moisture": "Zeit & Feuchtigkeit",
     "plant_count": "Anzahl der Pflanzen:",
     "plant_count_warning": "Ändern der Pflanzenanzahl setzt alle Ventil- und Sensorzuordnungen zurück",
     "all_plants": "Alle Pflanzen",
@@ -65,5 +66,6 @@
     "connecting": "Verbinde...",
     "reset_wifi": "WiFi-Einstellungen zurücksetzen",
     "yes": "Ja",
-    "no": "Nein"
+    "no": "Nein",
+    "--": "--"
 }
