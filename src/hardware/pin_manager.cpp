@@ -38,7 +38,8 @@ void initializeMoisturePins() {
     logThrottled("Initializing %d moisture sensor(s) starting at pin %d", 
                  settings.plant_count, settings.moisture_start_pin);
 
-    for (uint8_t i = 0; i < settings.plant_count; i++) {
+    //for (uint8_t i = 0; i < settings.plant_count; i++) {
+    for (uint8_t i = 0; i < 1; i++) {
         MoistureSensorData sensor;
         sensor.pin = settings.moisture_start_pin + i;
         sensor.analogValue = 0;
@@ -61,13 +62,14 @@ void initializeMoisturePins() {
     logThrottled("Total moisture sensors initialized: %d", moistureSensors.size());
 }
 
-void initializePins() {
+void initializePumpPin() {
     logThrottled("Initializing hardware pins...");
     
     // Initialize pump and flow sensor pins
     pinMode(pumpPin, OUTPUT);
-    pinMode(soilFlowSensorPin, INPUT_PULLUP);
+    //pinMode(soilFlowSensorPin, INPUT_PULLUP);
     digitalWrite(pumpPin, LOW);
     
-    logThrottled("Pump pin %d and flow sensor pin %d initialized", pumpPin, soilFlowSensorPin);
+    //logThrottled("Pump pin %d and flow sensor pin %d initialized", pumpPin, soilFlowSensorPin);
+    logThrottled("Pump pin %d initialized", pumpPin);
 }

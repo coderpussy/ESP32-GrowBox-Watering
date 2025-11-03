@@ -78,8 +78,8 @@ void loadJobList(const char* jobsfile) {
             job.moisture_min = obj["moisture_min"] | 20; // Default 20%
             job.moisture_max = obj["moisture_max"] | 80; // Default 80%
             job.plant = obj["plant"] | 0;
-            job.volume = obj["volume"] | 0;
-            job.duration = obj["duration"] | 0;
+            job.volume = obj["volume"] | 0.0f;
+            job.duration = obj["duration"] | 0.0f;
             strlcpy(job.starttime, obj["starttime"] | "", sizeof(job.starttime));
             job.everyday = obj["everyday"] | false;
             joblistVec.push_back(job);

@@ -12,7 +12,7 @@ std::vector<MoistureSensorData> moistureSensors;
 
 int mapMoistureToPercent(int analogValue) {
     // Constrain the value to valid range
-    analogValue = constrain(analogValue, WET_ANALOG_VALUE, DRY_ANALOG_VALUE);
+    //analogValue = constrain(analogValue, WET_ANALOG_VALUE, DRY_ANALOG_VALUE);
     
     // Map analog value to percentage (inverted: higher analog = drier = lower percentage)
     return map(analogValue, DRY_ANALOG_VALUE, WET_ANALOG_VALUE, DRY_PERCENT, WET_PERCENT);
@@ -27,8 +27,27 @@ void readMoistureSensors() {
     unsigned long now = millis();
     bool shouldLogDetails = (now - lastDetailedLog >= 300000); // 5 minutes
 
+    const int numReadings = 10; // Number of readings to average
+
     for (size_t i = 0; i < moistureSensors.size(); i++) {
-        moistureSensors[i].analogValue = analogRead(moistureSensors[i].pin);
+        int readings[numReadings];      // the readings from the analog input
+        int readIndex = 0;              // the index of the current reading
+        int total = 0;                  // the running total
+        int average = 0;                // the average
+
+        // take multiple readings to smooth out noise
+        for (int thisReading = 0; thisReading < numReadings; thisReading++) {
+            readings[thisReading] = analogRead(moistureSensors[i].pin);
+            delay(10);  // Small delay between readings
+        }
+
+        // Calculate the average
+        for (int thisReading = 0; thisReading < numReadings; thisReading++) {
+            total += readings[thisReading];
+        }
+        average = total / numReadings;
+
+        moistureSensors[i].analogValue = average;
         moistureSensors[i].percentValue = mapMoistureToPercent(moistureSensors[i].analogValue);
         moistureSensors[i].isDry = (moistureSensors[i].percentValue < 20);
 

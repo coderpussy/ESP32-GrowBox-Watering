@@ -287,7 +287,7 @@ function updateMoistureSensors(data) {
                 <div class="moisture-bar ${statusClass}" style="width: ${sensor.percent}%"></div>
             </div>
             <div class="sensor-details">
-                <span>${sensor.percent}%</span>
+                <span>${sensor.analog}/${sensor.percent}%</span>
                 <span class="sensor-pin">Pin ${sensor.pin}</span>
             </div>
         `;

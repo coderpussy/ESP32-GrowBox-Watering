@@ -8,7 +8,7 @@ extern const char* APP_VERSION;
 
 // Pin Definitions
 const int pumpPin = 32;
-const int soilFlowSensorPin = 19;
+const int soilFlowSensorPin = 19; // Water Flow Rate Sensor YF-S401
 
 // Timing Constants
 static const unsigned long LOG_THROTTLE_MS = 0; //100;
@@ -16,7 +16,7 @@ static const unsigned long WEBSERIAL_FLUSH_INTERVAL = 0; //50;
 static const unsigned long JOB_CHECK_INTERVAL = 1000;
 static const unsigned long NTP_WAIT_LOG_INTERVAL = 2000;
 static const unsigned long WIFI_CHECK_INTERVAL = 30000;  // Check WiFi every 30 seconds
-static const unsigned long MOISTURE_CHECK_INTERVAL = 60000;  // Check moisture every 60 seconds
+static const unsigned long MOISTURE_CHECK_INTERVAL = 10000; //60000;  // Check moisture every 60 seconds
 
 // NTP Configuration
 extern const char* ntpServer1;
@@ -49,19 +49,26 @@ enum JobTrigger {
     TRIGGER_BOTH = 2       // Either condition triggers the job
 };
 
+// Job control types
+enum JobControlType {
+    CONTROL_TIME_VOLUME = 0,           // Time-based duration
+    CONTROL_MOISTURE = 1,              // Moisture-based (requires moisture sensor)
+    CONTROL_MOISTURE_TIME_VOLUME = 2   // Time and volume-based (requires both sensors)
+};
+
 // Job Structure
 struct jobStruct {
     int id;
     bool active;
     char name[32];
     int plant;
-    int volume;             // in milliliters
-    int duration;
+    float volume;             // in milliliters
+    float duration;
     char starttime[20];
     bool everyday;
     JobTrigger type;        // Job trigger type
-    uint8_t moisture_min;   // (0-100%)
-    uint8_t moisture_max;   // (0-100%)
+    uint8_t moisture_min;   // Minimum moisture to start watering
+    uint8_t moisture_max;   // Maximum moisture to stop watering
 };
 
 // Job DateTime Structure
@@ -78,11 +85,11 @@ struct jobDateTime {
 // State Enums
 enum JobState {
     JOB_IDLE,
-    JOB_OPEN_VALVE,
-    JOB_START_PUMP,
+    JOB_VALVE_OPENING,
+    JOB_PUMP_STARTING,
     JOB_RUNNING,
-    JOB_STOP_PUMP,
-    JOB_CLOSE_VALVE
+    JOB_PUMP_STOPPING,
+    JOB_VALVE_CLOSING
 };
 
 enum PumpState { 
@@ -127,8 +134,10 @@ extern bool auto_switch;
 extern bool pump_switch;
 extern int pumpState;
 extern float pumpRunTime;
+extern float soilFlowVolume;
 extern unsigned long pumpStartMillis;
 extern bool jobActive;
+extern float jobStartVolume;
 extern JobState currentJobState;
 extern unsigned long jobStateTimestamp;
 extern jobStruct runningJob;

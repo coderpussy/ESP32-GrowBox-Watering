@@ -18,6 +18,7 @@
 #include "hardware/pin_manager.h"
 #include "hardware/valve_control.h"
 #include "hardware/pump_control.h"
+#include "hardware/flow_sensor.h"
 #include "hardware/moisture_sensor.h"
 #include "network/wifi_manager.h"
 #include "network/websocket_handler.h"
@@ -61,11 +62,12 @@ PumpContext pumpCtx = {PUMP_IDLE, 0, false, false};
 NtpContext ntpCtx = {NTP_IDLE, 0, 0, false, 0};
 
 // Flow sensor variables
-volatile int pulseCount = 0;
+/*volatile int pulseCount = 0;
 float soilFlowRate = 0.0;
 float soilFlowVolume = 0.0;
 float roundSoilFlowVolume = 0.0;
-float tempsoilFlowVolume = 0.0;
+float tempsoilFlowVolume = 0.0;*/
+float jobStartVolume = 0.0f;
 
 // Timing variables
 unsigned long lastTime = 0;
@@ -81,7 +83,7 @@ AsyncWebServer server(80);
 const char* configfile = "/config.json";
 const char* jobsfile = "/schedules.json";
 
-void IRAM_ATTR pulseCounter() {
+/*void IRAM_ATTR pulseCounter() {
     pulseCount++;
 }
 
@@ -97,7 +99,7 @@ void calculateSoilFlowRate() {
     
     pulseCount = 0;
     attachInterrupt(digitalPinToInterrupt(soilFlowSensorPin), pulseCounter, FALLING);
-}
+}*/
 
 void recvMsg(uint8_t *data, size_t len) {
     logThrottled("Received Data...");
@@ -225,7 +227,8 @@ void setup() {
     loadConfiguration(configfile);
 
     // Initialize hardware pins
-    initializePins();
+    initializePumpPin();
+    initFlowSensorPin();
     initializeValvePins();
     initializeMoisturePins();
 
@@ -233,7 +236,7 @@ void setup() {
     loadJobList(jobsfile);
 
     // Setup flow sensor interrupt
-    attachInterrupt(digitalPinToInterrupt(soilFlowSensorPin), pulseCounter, FALLING);
+    //attachInterrupt(digitalPinToInterrupt(soilFlowSensorPin), pulseCounter, FALLING);
     
     // Read initial pump state
     pumpState = digitalRead(pumpPin);

@@ -22,23 +22,36 @@ bool checkMoistureTrigger(const jobStruct& job) {
 
     const MoistureSensorData& sensor = moistureSensors[job.plant];
     
-    // Trigger if current moisture is below threshold
-    if (sensor.percentValue <= job.moisture_min) {
-        logThrottled("Job %d: Moisture trigger - Plant %d moisture %d%% <= threshold %d%%",
-                     job.id, job.plant + 1, sensor.percentValue, job.moisture_min);
-        return true;
-    }
-    // Trigger if current moisture is above max threshold
-    if (sensor.percentValue >= job.moisture_max) {
-        logThrottled("Job %d: Moisture trigger - Plant %d moisture %d%% >= max %d%%",
-                     job.id, job.plant + 1, sensor.percentValue, job.moisture_max);
-        return true;
-    }
-    // Trigger if within min-max range
-    if (sensor.percentValue >= job.moisture_min && sensor.percentValue <= job.moisture_max) {
-        logThrottled("Job %d: Moisture trigger - Plant %d moisture %d%% within range %d%%-%d%%",
-                     job.id, job.plant + 1, sensor.percentValue, job.moisture_min, job.moisture_max);
-        return true;
+    switch (job.type) {
+        case TRIGGER_MOISTURE:
+            // Trigger if current moisture is below threshold
+            if (sensor.percentValue <= job.moisture_min) {
+                logThrottled("Job %d: Moisture trigger - Plant %d moisture %d%% <= threshold %d%%",
+                            job.id, job.plant + 1, sensor.percentValue, job.moisture_min);
+                return true;
+            }
+            // Trigger if current moisture is above max threshold
+            if (sensor.percentValue >= job.moisture_max) {
+                logThrottled("Job %d: Moisture trigger - Plant %d moisture %d%% >= max %d%%",
+                            job.id, job.plant + 1, sensor.percentValue, job.moisture_max);
+                return true;
+            }
+            // Trigger if within min-max range
+            if (sensor.percentValue >= job.moisture_min && sensor.percentValue <= job.moisture_max) {
+                logThrottled("Job %d: Moisture trigger - Plant %d moisture %d%% within range %d%%-%d%%",
+                            job.id, job.plant + 1, sensor.percentValue, job.moisture_min, job.moisture_max);
+                return true;
+            }
+            break;
+
+        case TRIGGER_BOTH:
+            // For BOTH type, we only check if moisture is below min threshold
+            if (sensor.percentValue <= job.moisture_min) {
+                logThrottled("Job %d: Moisture trigger (BOTH) - Plant %d moisture %d%% <= threshold %d%%",
+                            job.id, job.plant + 1, sensor.percentValue, job.moisture_min);
+                return true;
+            }
+            break;
     }
 
     return false;
@@ -96,6 +109,21 @@ bool checkTimeTrigger(const jobStruct& job, int currentSecond, time_t now_t) {
     return shouldStart;
 }
 
+// Check time and moisture triggers types
+bool checkMoistureTimeOrVolumeTrigger(const jobStruct& job, int currentSecond, time_t now_t) {
+    bool shouldStart = false;
+    bool moistureTriggered = checkMoistureTrigger(job);
+
+    if (moistureTriggered) {
+        // If moisture condition met, check job time or job volume condition
+        if (job.volume > 0 || job.duration > 0) {
+            shouldStart = true;
+        }
+    }
+    
+    return shouldStart;
+}
+
 // Process a job based on its trigger type
 void jobsProcessor() {
     static int lastCheckedSecond = -1;
@@ -104,45 +132,56 @@ void jobsProcessor() {
     static unsigned long lastMoistureCheck = 0;
     const unsigned long moistureCheckInterval = 300000; // Check moisture jobs every 5 minutes
 
+    // Get current time
     time_t now_t = time(nullptr);
     struct tm timeinfo;
     localtime_r(&now_t, &timeinfo);
 
+    // Check if a new second has started
     int currentSecond = timeinfo.tm_hour * 3600 + timeinfo.tm_min * 60 + timeinfo.tm_sec;
     bool newSecond = (currentSecond != lastCheckedSecond);
     if (newSecond) {
         lastCheckedSecond = currentSecond;
     }
 
+    // Reset last executed job ID at midnight
     if (timeinfo.tm_hour == 0 && timeinfo.tm_min == 0 && timeinfo.tm_sec == 0) {
         lastExecutedJobId = -1;
     }
 
+    // Check for OTA updates
     if (otaUpdating) {
         logThrottled("OTA in progress - skipping job evaluation");
         return;
     }
 
+    // Get current time in milliseconds
     unsigned long now = millis();
 
+    // Throttle job starts to at most one per minute
     if (now - lastJobStartTime < 60000) {
         return;
     }
 
+    // Determine if we should check moisture-based jobs
     bool checkMoisture = (now - lastMoistureCheck >= moistureCheckInterval);
     if (checkMoisture) {
         lastMoistureCheck = now;
     }
 
+    // Process each job
     for (const jobStruct& job : joblistVec) {
         // Skip if this job was the last executed one
         if (job.id == lastExecutedJobId) continue;
+
         // Skip if job is not active
         if (!job.active) continue;
 
+        // Set trigger defaults
         bool shouldTrigger = false;
         const char* triggerReason = "";
 
+        // Evaluate based on job trigger type
         switch (job.type) {
             case TRIGGER_TIME:
                 // Only check time-based triggers on new seconds
@@ -162,31 +201,24 @@ void jobsProcessor() {
 
             case TRIGGER_BOTH:
                 // Check both conditions
-                if (newSecond && checkTimeTrigger(job, currentSecond, now_t)) {
+                if (newSecond && checkMoistureTimeOrVolumeTrigger(job, currentSecond, now_t)) {
                     shouldTrigger = true;
-                    triggerReason = "time-based";
-                } else if (checkMoisture && checkMoistureTrigger(job)) {
-                    shouldTrigger = true;
-                    triggerReason = "moisture-based";
+                    triggerReason = "Moisture-time-or-volume-based";
                 }
                 break;
         }
 
+        // If job should trigger, process it
         if (shouldTrigger) {
-            if (job.duration > 0) {
-                logThrottled("Job %d triggered (%s) - valve %d, duration %.1fs",
-                         job.id, triggerReason, job.plant + 1, job.duration);
-            }
-            if (job.volume > 0) {
-                logThrottled("Job %d triggered (%s) - valve %d, volume %dml",
-                         job.id, triggerReason, job.plant + 1, job.volume);
-            }
+            logThrottled("Job %d triggered (%s)", job.id, triggerReason);
 
+            // Check if another job is active
             if (jobActive) {
                 logThrottled("Job %d due but another job active - skipping", job.id);
                 continue;
             }
 
+            // Process the job
             processJob(job);
             lastExecutedJobId = job.id;
             lastJobStartTime = now;

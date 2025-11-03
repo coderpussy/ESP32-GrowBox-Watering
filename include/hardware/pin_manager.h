@@ -2,6 +2,6 @@
 
 #include <Arduino.h>
 
-void initializePins();
+void initializePumpPin();
 void initializeValvePins();
 void initializeMoisturePins();

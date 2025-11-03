@@ -3,6 +3,7 @@
 #include "storage/filesystem_manager.h"
 #include "hardware/valve_control.h"
 #include "hardware/pump_control.h"
+#include "hardware/flow_sensor.h"
 #include "hardware/moisture_sensor.h"
 #include "hardware/pin_manager.h"
 #include "config.h"
@@ -26,7 +27,7 @@ void handleGetData() {
 
     String Text;
     
-    const size_t capacity = JSON_OBJECT_SIZE(4) + 
+    const size_t capacity = JSON_OBJECT_SIZE(5) + 
                            JSON_ARRAY_SIZE(settings.plant_count) + 
                            settings.plant_count * JSON_OBJECT_SIZE(2) + 
                            128;
@@ -36,6 +37,7 @@ void handleGetData() {
     root["auto_switch"] = auto_switch;
     root["pump_switch"] = pump_switch;
     root["pumpRunTime"] = String(pumpRunTime, 2);
+    root["soilFlowVolume"] = String(soilFlowVolume, 0);
 
     JsonArray valveArray = root.createNestedArray("valves");
     for(uint8_t i = 0; i < settings.plant_count && i < valve_switches.size(); i++) {
@@ -76,7 +78,8 @@ void handleSaveSettings(const JsonDocument& json) {
     uint8_t new_count = json["plant_count"] | 3;
     if (new_count != settings.plant_count || settings.use_flowsensor || settings.use_moisturesensor) {
         settings.plant_count = new_count;
-        initializePins();
+        initializePumpPin();
+        initFlowSensorPin();
         initializeValvePins();
         initializeMoisturePins();
     }
