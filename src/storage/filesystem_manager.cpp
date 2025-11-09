@@ -75,8 +75,8 @@ void loadJobList(const char* jobsfile) {
             strlcpy(job.name, obj["name"] | "", sizeof(job.name));
             int triggerType = obj["type"] | 0;
             job.type = static_cast<JobTrigger>(triggerType);
-            job.moisture_min = obj["moisture_min"] | 20; // Default 20%
-            job.moisture_max = obj["moisture_max"] | 80; // Default 80%
+            job.moisture_min = obj["moisture_min"] | 0;
+            job.moisture_max = obj["moisture_max"] | 0;
             job.plant = obj["plant"] | 0;
             job.volume = obj["volume"] | 0.0f;
             job.duration = obj["duration"] | 0.0f;

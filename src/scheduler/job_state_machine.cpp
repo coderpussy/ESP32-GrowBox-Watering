@@ -96,26 +96,26 @@ void processJob(const jobStruct& job) {
             // Date Time or Volume based control
             if (job.duration > 0) {
                 logThrottled("Start date time-based job: valve %d, duration %.1fs", 
-                             job.plant + 1, job.duration);
+                             job.plant, job.duration);
             }
             if (job.volume > 0) {
                 logThrottled("Start date volume-based job: valve %d, target %.2fL", 
-                             job.plant + 1, job.volume);
+                             job.plant, job.volume);
             }
             break;
         case CONTROL_MOISTURE:
             logThrottled("Start moisture-based job: valve %d, min %d%% -> max %d%%", 
-                         job.plant + 1, job.moisture_min, job.moisture_max);
+                         job.plant, job.moisture_min, job.moisture_max);
             break;
         case CONTROL_MOISTURE_TIME_VOLUME:
             // Moisture Min with Time or Volume based control
             if (job.duration > 0) {
                 logThrottled("Start moisture-time-based job: valve %d, duration %.1fs, min %d%%", 
-                            job.plant + 1, job.duration, job.moisture_min);
+                            job.plant, job.duration, job.moisture_min);
             }
             if (job.volume > 0) {
                 logThrottled("Start moisture-volume-based job: valve %d, target %.2fL, min %d%%", 
-                            job.plant + 1, job.volume, job.moisture_min);
+                            job.plant, job.volume, job.moisture_min);
             }
             break;
     }
@@ -281,10 +281,10 @@ void handleJobStateMachine() {
                 pumpCtx.manualControl = false;
                 pumpCtx.targetState = false;
                 pumpCtx.state = PUMP_STOPPING;
-                handlePumpSwitch();
+                handlePumpSwitch(false);
                 currentJobState = JOB_PUMP_STOPPING;
                 jobStateTimestamp = now;
-                logThrottled("Job duration complete, stopping pump");
+                logThrottled("Job complete, stopping pump");
             }
             break;
         }

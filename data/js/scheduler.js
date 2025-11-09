@@ -259,17 +259,17 @@ function setJobList(data) {
         // jobvolume or jobduration or starttime or every day or moisture min or moisture max is empty
         let jobvolumeText = job.volume ? "" : "--";
         let jobdurationText = job.duration ? "" : "--";
-        let everydayText = jobselect == 0 ? job.everyday ? "yes" : "no" : "--";
+        let everydayText = job.type == 0 ? job.everyday ? "yes" : "no" : "--";
         let starttimeText = job.starttime ? new Date(job.starttime).toLocaleString() : "--";
-        let moistureMinText = job.moistureMin ? "" : "--";
-        let moistureMaxText = job.moistureMax ? "" : "--";
+        let moistureMinText = job.moisture_min ? "" : "--";
+        let moistureMaxText = job.moisture_max ? "" : "--";
 
         jobItem.innerHTML = `
             <button class="activate">${job.active ? "Active" : "Activate"}</button>
             <p><span data-translate="job_name">Name:</span><span class="itemjobname">${job.name}</span></p>
             <p><span data-translate="job_type">Job:</span><span><span class="itemjobselect">${job.type}</span> - <span data-translate="${jobTypeText}"></span></span></p>
-            <p><span data-translate="moisture_min">Moisture Min:</span><span><span class="itemmoisturemin">${job.moistureMin}</span><span>${moistureMinText}</span><span>%</span></span></p>
-            <p><span data-translate="moisture_max">Moisture Max:</span><span><span class="itemmoisturemax">${job.moistureMax}</span><span>${moistureMaxText}</span><span>%</span></span></p>
+            <p><span data-translate="moisture_min">Moisture Min:</span><span><span class="itemmoisturemin">${job.moisture_min}</span><span>${moistureMinText}</span><span>%</span></span></p>
+            <p><span data-translate="moisture_max">Moisture Max:</span><span><span class="itemmoisturemax">${job.moisture_max}</span><span>${moistureMaxText}</span><span>%</span></span></p>
             <p><span data-translate="plant">Plant:</span><span class="itemplantselect">${job.plant}</span></p>
             <p><span data-translate="volume">Volume:</span><span><span class="itemjobvolume">${job.volume}</span><span>${jobvolumeText}</span><span>ml.</span></span></p>
             <p><span data-translate="duration">Duration:</span><span><span class="itemjobduration">${job.duration}</span><span>${jobdurationText}</span><span>sec.</span></span></p>

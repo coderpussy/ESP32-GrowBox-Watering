@@ -148,8 +148,8 @@ void handleAddJobToList(const JsonDocument& json) {
     strlcpy(newJob.name, json["name"] | "", sizeof(newJob.name));
     int triggerType = json["type"] | 0;
     newJob.type = static_cast<JobTrigger>(triggerType);
-    newJob.moisture_min = json["moisture_min"] | 20; // Default 20%
-    newJob.moisture_max = json["moisture_max"] | 80; // Default 80%
+    newJob.moisture_min = json["moisture_min"] | 0;
+    newJob.moisture_max = json["moisture_max"] | 0;
     newJob.plant = json["plant"] | 0;
     newJob.volume = json["volume"] | 0;
     newJob.duration = json["duration"] | 0;

@@ -15,14 +15,14 @@ void handleValveSwitch(uint8_t valveNum) {
             digitalWrite(valvePins[valveNum], LOW);
             valve_switches[valveNum] = false;
             valveStates[valveNum] = LOW;
-            logThrottled("Valve %d closed", valveNum + 1);
+            logThrottled("Valve %d closed", valveNum);
         } else {
-            logThrottled("Cannot close valve %d - pump is running", valveNum + 1);
+            logThrottled("Cannot close valve %d - pump is running", valveNum);
         }
     } else {
         digitalWrite(valvePins[valveNum], HIGH);
         valve_switches[valveNum] = true;
         valveStates[valveNum] = HIGH;
-        logThrottled("Valve %d opened", valveNum + 1);
+        logThrottled("Valve %d opened", valveNum);
     }
 }
