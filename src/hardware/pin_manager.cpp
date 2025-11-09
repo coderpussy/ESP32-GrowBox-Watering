@@ -38,8 +38,8 @@ void initializeMoisturePins() {
     logThrottled("Initializing %d moisture sensor(s) starting at pin %d", 
                  settings.plant_count, settings.moisture_start_pin);
 
-    //for (uint8_t i = 0; i < settings.plant_count; i++) {
-    for (uint8_t i = 0; i < 1; i++) {
+    for (uint8_t i = 0; i < settings.plant_count; i++) {
+    //for (uint8_t i = 0; i < 1; i++) {
         MoistureSensorData sensor;
         sensor.pin = settings.moisture_start_pin + i;
         sensor.analogValue = 0;
@@ -48,9 +48,12 @@ void initializeMoisturePins() {
 
         //pinMode(sensor.pin, INPUT);
         
-        // Read initial value
+        // Read initial value, get DRY_ANALOG_VALUE and WET_ANALOG_VALUE from moisture_sensor.cpp
+        int dryAnalogValue = (i == 0) ? DRY_ANALOG_VALUE_0 : (i == 1) ? DRY_ANALOG_VALUE_1 : DRY_ANALOG_VALUE_2;
+        int wetAnalogValue = (i == 0) ? WET_ANALOG_VALUE_0 : (i == 1) ? WET_ANALOG_VALUE_1 : WET_ANALOG_VALUE_2;
+        
         sensor.analogValue = analogRead(sensor.pin);
-        sensor.percentValue = mapMoistureToPercent(sensor.analogValue);
+        sensor.percentValue = mapMoistureToPercent(sensor.analogValue, wetAnalogValue, dryAnalogValue);
         sensor.isDry = (sensor.percentValue < 20);
         
         moistureSensors.push_back(sensor);
