@@ -23,7 +23,7 @@
     "time_moisture": "Zeit & Feuchtigkeit",
     "plant_count": "Anzahl der Pflanzen:",
     "plant_count_warning": "Ändern der Pflanzenanzahl setzt alle Ventil- und Sensorzuordnungen zurück",
-    "all_plants": "Alle Pflanzen",
+    "select_plant": "-- Pflanze auswählen --",
     "plant_": "Pflanze",
     "activate": "Aktivieren",
     "active": "Aktiv",

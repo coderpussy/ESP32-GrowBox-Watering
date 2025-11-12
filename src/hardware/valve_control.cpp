@@ -4,12 +4,16 @@
 #include "utils/logger.h"
 
 void handleValveSwitch(uint8_t valveNum) {
+    // Validate valve number
     if (valveNum >= settings.plant_count) {
         logThrottled("Invalid valve number: %d", valveNum);
         return;
     }
     
+    // Toggle valve state
     bool currentState = valve_switches[valveNum];
+
+    // If valve is currently open, close it; if closed, open it
     if (currentState) {
         if (pumpCtx.state != PUMP_RUNNING) {
             digitalWrite(valvePins[valveNum], LOW);

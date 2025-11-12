@@ -23,7 +23,7 @@
     "time_moisture": "Time & Moisture",
     "plant_count": "Number of Plants:",
     "plant_count_warning": "Changing plant count will reset all valve and sensor assignments",
-    "all_plants": "All Plants",
+    "select_plant": "-- Select Plant --",
     "plant_": "Plant",
     "activate": "Activate",
     "active": "Active",

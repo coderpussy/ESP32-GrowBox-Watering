@@ -126,12 +126,47 @@ function addJob() {
         return; // Don't add task if task or deadline is empty
     }
 
-    if (!jobselect == 1) { // If job type is time-based or both
-        if (starttime === "" && !everyday) {
+    if (plantselect === "") {
+        alert("Please select a plant for the job.");
+        return;
+    }
+    
+    if (jobselect == 1 || jobselect == 2) { // If job type is moisture-based or both
+        if (jobselect == 1) {
+            if ((moistureMin === "" || moistureMax === "")) {
+                alert("Please enter a minimum/maximum moisture level for the moisture sensor job.");
+                return;
+            }
+            if (parseInt(moistureMin) >= parseInt(moistureMax)) {
+                alert("Minimum moisture level must be less than maximum moisture level.");
+                return;
+            }
+            if (parseInt(moistureMin) < 0 || parseInt(moistureMax) > 100) {
+                alert("Moisture levels must be between 0 and 100.");
+                return;
+            }
+        }
+        if (jobselect == 2) {
+            if (moistureMin === "") {
+                alert("Please enter a minimum moisture level for the time & moisture job.");
+                return;
+            }
+            if (parseInt(moistureMin) < 0 || parseInt(moistureMin) > 100) {
+                alert("Moisture levels must be between 0 and 100.");
+                return;
+            }
+        }
+    }
+
+    if (jobselect == 0) { // If job type is time-based only
+        if (jobvolume === "" || jobduration === "") {
+            alert("Please enter volume and duration for the time-based job.");
+            return;
+        }
+        if (starttime === "") {
             alert("Please select an upcoming date for the start time.");
             return;
         }
-
         if (!everyday) {
             const selectedDate = new Date(starttime);
             const currentDate = new Date();

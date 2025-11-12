@@ -9,8 +9,6 @@ const float FLOW_CALIBRATION_FACTOR = 18;  // pulses per second per L/min
 volatile int pulseCount = 0;
 float soilFlowRate = 0.0;          // Flow rate in L/min
 float soilFlowVolume = 0.0;        // Total volume in L
-float roundSoilFlowVolume = 0.0;   // Rounded total volume in L
-float tempsoilFlowVolume = 0.0;    // Temporary variable for volume comparison
 
 static unsigned long lastFlowTime = 0;
 
@@ -25,8 +23,6 @@ void initFlowSensorPin() {
     pulseCount = 0;
     soilFlowRate = 0.0;
     soilFlowVolume = 0.0;
-    roundSoilFlowVolume = 0.0;
-    tempsoilFlowVolume = 0.0;
     lastFlowTime = millis();
     
     logThrottled("Flow sensor initialized on pin %d", soilFlowSensorPin);
@@ -54,14 +50,7 @@ void calculateSoilFlowRate() {
     //float volumeIncrement = soilFlowRate * 1000.0 / 60.0;
     soilFlowVolume += volumeIncrement;
     
-    // Round to 2 decimal places
-    roundSoilFlowVolume = round(soilFlowVolume * 100.0) / 100.0;
-    
-    // Update temp variable only if changed
-    if (roundSoilFlowVolume != tempsoilFlowVolume) {
-        tempsoilFlowVolume = roundSoilFlowVolume;
-    }
-    
+    // Update last flow time
     lastFlowTime = currentTime;
 }
 
@@ -72,8 +61,6 @@ void resetFlowSensor() {
     
     soilFlowRate = 0.0;
     soilFlowVolume = 0.0;
-    roundSoilFlowVolume = 0.0;
-    tempsoilFlowVolume = 0.0;
     lastFlowTime = millis();
     
     logThrottled("Flow sensor reset");

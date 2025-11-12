@@ -161,9 +161,10 @@ function onMessage(event) {
     
     // Check if action is defined in the received data
     if (!data.action) {
+        // Handle moisture sensor data if present instead of action
         if (data.sensors) {
             updateMoistureSensors(data);
-        }
+        } else return;
     } else {
         action = data.action;
 
@@ -183,9 +184,12 @@ function onMessage(event) {
 
             // Update pump control
             pump_switch.checked = data.pump_switch;
-            // Update pump run time
-            pumpRunTime.innerText = data.pumpRunTime;
-            
+
+            if (data.pumpRunTime) {
+                // Update pump run time
+                pumpRunTime.innerText = data.pumpRunTime;
+            }
+
             if (data.soilFlowVolume) {
                 // Update soil flow volume
                 soilFlowVolume.innerText = data.soilFlowVolume;
@@ -225,7 +229,7 @@ function onMessage(event) {
         } else if (action == "setjoblist") {
             // Set job list from received joblist data
             setJobList(data.joblist);
-        }
+        } else return;
     }
 }
 

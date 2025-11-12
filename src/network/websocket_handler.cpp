@@ -194,14 +194,10 @@ void handleResetCounter() {
     extern volatile int pulseCount;
     extern float soilFlowRate;
     extern float soilFlowVolume;
-    extern float roundSoilFlowVolume;
-    extern float tempsoilFlowVolume;
     
     pulseCount = 0;
     soilFlowRate = 0.0;
     soilFlowVolume = 0.0;
-    roundSoilFlowVolume = 0.0;
-    tempsoilFlowVolume = 0.0;
     pumpRunTime = 0;
     pumpStartMillis = 0;
     

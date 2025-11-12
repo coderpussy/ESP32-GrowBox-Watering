@@ -20,7 +20,7 @@ JobControlType getJobControlType(const jobStruct& job) {
             return CONTROL_MOISTURE_TIME_VOLUME;
         default:
             // Log warning for debugging
-            logThrottled("Warning: Invalid job type %d, defaulting to TIME_VOLUME", job.type);
+            logThrottled("Warning: Invalid job type %d, defaulting to time/volume", job.type);
             return CONTROL_TIME_VOLUME;
     }
 }
@@ -278,6 +278,7 @@ void handleJobStateMachine() {
                     logThrottled("Job stopping - %s", stopReason);
                 }
 
+                // Stop the pump
                 pumpCtx.manualControl = false;
                 pumpCtx.targetState = false;
                 pumpCtx.state = PUMP_STOPPING;
@@ -290,6 +291,7 @@ void handleJobStateMachine() {
         }
             
         case JOB_PUMP_STOPPING: {
+            // Wait for pump to stop
             if (now - jobStateTimestamp >= 750) {
                 uint8_t plantNum = runningJob.plant;
                 
