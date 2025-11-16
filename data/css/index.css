@@ -155,7 +155,10 @@ div.formcontrols {
 }
 
 /* Overlay default CSS style definition */
-#overlay-calendar, #overlay-webserial, #overlay-settings, #overlay-wifi {
+#overlay-calendar,
+#overlay-webserial,
+#overlay-settings,
+#overlay-wifi {
     display: grid;
     place-items: center;
     position: fixed;
@@ -173,14 +176,20 @@ div.formcontrols {
     opacity: 0;
     visibility: hidden;
 }
-#overlay-calendar.active, #overlay-webserial.active, #overlay-settings.active, #overlay-wifi.active {
+#overlay-calendar.active,
+#overlay-webserial.active,
+#overlay-settings.active,
+#overlay-wifi.active {
     opacity: 1;
     visibility: visible;
     z-index: 2;
     overflow-y: auto;
 }
 
-#overlay-calendar .close, #overlay-webserial .close, #overlay-settings .close, #overlay-wifi .close {
+#overlay-calendar .close,
+#overlay-webserial .close,
+#overlay-settings .close,
+#overlay-wifi .close {
     position: absolute;
     right: 36px;
     top: 24px;
@@ -189,13 +198,20 @@ div.formcontrols {
     opacity: 0.8;
     cursor: pointer;
 }
-#overlay-calendar .close:hover, #overlay-webserial .close:hover, #overlay-settings .close:hover, #overlay-wifi .close:hover {
+#overlay-calendar .close:hover,
+#overlay-webserial .close:hover,
+#overlay-settings .close:hover,
+#overlay-wifi .close:hover {
     opacity: 1;
 }
-#overlay-calendar .close:before, #overlay-calendar .close:after,
-#overlay-webserial .close:before, #overlay-webserial .close:after,
-#overlay-settings .close:before, #overlay-settings .close:after,
-#overlay-wifi .close:before, #overlay-wifi .close:after {
+#overlay-calendar .close:before,
+#overlay-calendar .close:after,
+#overlay-webserial .close:before,
+#overlay-webserial .close:after,
+#overlay-settings .close:before,
+#overlay-settings .close:after,
+#overlay-wifi .close:before,
+#overlay-wifi .close:after {
     position: absolute;
     left: 15px;
     content: ' ';
@@ -203,16 +219,24 @@ div.formcontrols {
     width: 4px;
     background-color: #fff;
 }
-#overlay-calendar .close:before, #overlay-webserial .close:before, #overlay-settings .close:before, #overlay-wifi .close:before {
+#overlay-calendar .close:before,
+#overlay-webserial .close:before,
+#overlay-settings .close:before,
+#overlay-wifi .close:before {
     transform: rotate(45deg);
 }
-#overlay-calendar .close:after, #overlay-webserial .close:after, #overlay-settings .close:after, #overlay-wifi .close:after {
+#overlay-calendar .close:after,
+#overlay-webserial .close:after,
+#overlay-settings .close:after,
+#overlay-wifi .close:after {
     transform: rotate(-45deg);
 }
-#overlay-calendar .formcontrols, #overlay-webserial .formcontrols, #overlay-settings .formcontrols, #overlay-wifi .formcontrols {
+#overlay-calendar .formcontrols,
+#overlay-webserial .formcontrols,
+#overlay-settings .formcontrols,
+#overlay-wifi .formcontrols {
     padding: 20px;
 }
-
 
 .auto-switch,
 .valve-switch,
@@ -257,17 +281,13 @@ div.formcontrols {
 
 
 input#auto_switch:checked + .auto-slider,
-input#valve_switch_1:checked + .valve-slider,
-input#valve_switch_2:checked + .valve-slider,
-input#valve_switch_3:checked + .valve-slider,
+input[id*="valve_switch_"]:checked + .valve-slider,
 input#pump_switch:checked + .pump-slider {
   background-color: #0fc0c0;
 }
 
 input#auto_switch:checked + .auto-slider:before,
-input#valve_switch_1:checked + .valve-slider:before,
-input#valve_switch_2:checked + .valve-slider:before,
-input#valve_switch_3:checked + .valve-slider:before,
+input[id*="valve_switch_"]:checked + .valve-slider:before,
 input#pump_switch:checked + .pump-slider:before {
   transform: translateX(26px);
 }
@@ -346,8 +366,9 @@ input[type="number"]#plant_count {
     flex-wrap: wrap;
 }
 
-#valve-controls td {
+#valve-controls .valve-control {
     min-width: 200px;
+    text-align: center;
 }
 
 @media (max-width: 768px) {

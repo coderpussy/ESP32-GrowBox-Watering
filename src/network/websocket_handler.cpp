@@ -42,7 +42,7 @@ void handleGetData() {
     JsonArray valveArray = root.createNestedArray("valves");
     for(uint8_t i = 0; i < settings.plant_count && i < valve_switches.size(); i++) {
         JsonObject valve = valveArray.createNestedObject();
-        valve["id"] = i + 1;
+        valve["id"] = i;
         valve["state"] = bool(valve_switches[i]);
     }
 
@@ -234,8 +234,8 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
         else if (action == "pump_switch") handlePumpSwitch(true);
         else if (action == "valve_switch") {
             int valveId = json["valve_id"].as<int>();
-            if (valveId > 0 && valveId <= settings.plant_count) {
-                handleValveSwitch(valveId - 1);
+            if (valveId >= 0 && valveId <= settings.plant_count) {
+                handleValveSwitch(valveId);
             }
         }
     }

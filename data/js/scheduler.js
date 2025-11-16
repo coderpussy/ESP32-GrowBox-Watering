@@ -86,9 +86,8 @@ function populateFormFromJobItem(jobItem) {
 function updatePlantSelect(plantCount) {
     const plantSelect = document.getElementById('plant-select');
     plantSelect.innerHTML = `
-        <option value="0" data-translate="all_plants">All Plants</option>
         ${Array.from({length: plantCount}, (_, i) => `
-            <option value="${i+1}"><span data-translate="plant_">Plant</span> ${i+1}</option>
+            <option value="${i}"><span data-translate="plant_">Plant</span> ${i+1}</option>
         `).join('')}
     `;
 }

@@ -54,26 +54,28 @@ function createValveControls(plantCount) {
     valveContainer.innerHTML = ''; // Clear existing controls
     
     for(let i = 0; i < plantCount; i++) {
-        const valveDiv = document.createElement('td');
+        const valveDiv = document.createElement('div');
+        valveDiv.className = 'valve-control';
+
         valveDiv.innerHTML = `
-            <table><tr>
-                <td style="text-align: center;">
-                    <span data-translate="magnetic_valve_${i+1}">Magnetic Valve ${i+1}:</span><br /><br />
-                    <span id="valve_${i+1}"></span>
-                    <label class="valve-switch" for="valve_switch_${i+1}">
-                        <input type="checkbox" id="valve_switch_${i+1}" />
-                        <div class="valve-slider round"></div>
-                    </label>
-                </td>
-            </tr></table>
+            <div id="moisture_sensor_${i}" class="moistureSensor" style="display:none;"></div>
+            <div>
+                <span data-translate="magnetic_valve_${i+1}">Magnetic Valve ${i+1}:</span>
+                <br /><br />
+                <span id="valve_${i}"></span>
+                <label class="valve-switch" for="valve_switch_${i}">
+                    <input type="checkbox" id="valve_switch_${i}" />
+                    <div class="valve-slider round"></div>
+                </label>
+            </div>
         `;
         valveContainer.appendChild(valveDiv);
         
         // Add event listener
-        document.getElementById(`valve_switch_${i+1}`).addEventListener('change', e => {
+        document.getElementById(`valve_switch_${i}`).addEventListener('change', e => {
             websocket.send(JSON.stringify({
                 "action": "valve_switch",
-                "valve_id": i + 1  // Send 1-based index
+                "valve_id": i  // Send 0-based index
             }));
         });
     }
@@ -159,7 +161,7 @@ function onMessage(event) {
 
     console.log('message:',data);
     
-    // Check if action is defined in the received data
+    // Check if action is not defined in the received data
     if (!data.action) {
         // Handle moisture sensor data if present instead of action
         if (data.sensors) {
@@ -222,9 +224,11 @@ function onMessage(event) {
             }
             // Show/hide moisture sensor settings based on use_moisturesensor
             if (use_moisturesensor.checked) {
-                document.querySelector("#moistureSensorsWrapper").style.display = "flex";
+                document.querySelector("#moistureSensorsTitle").style.display = "block";
+                document.querySelectorAll(".moistureSensor").forEach(elem => elem.style.display = "flex");
             } else {
-                document.querySelector("#moistureSensorsWrapper").style.display = "none";
+                document.querySelector("#moistureSensorsTitle").style.display = "none";
+                document.querySelectorAll(".moistureSensor").forEach(elem => elem.style.display = "none");
             }
         } else if (action == "setjoblist") {
             // Set job list from received joblist data
@@ -264,18 +268,22 @@ function saveSettings() {
 }
 
 function updateMoistureSensors(data) {
-    const container = document.getElementById('moisture-sensors-container');
-    const card = document.getElementById('moisture-card');
+    //const container = document.getElementById('moisture-sensors-container');
+    //const card = document.getElementById('moisture-card');
     
     if (!data.enabled || data.count === 0) {
-        card.style.display = 'none';
+        //card.style.display = 'none';
         return;
     }
     
-    card.style.display = 'flex';
-    container.innerHTML = '';
+    //card.style.display = 'flex';
+    //container.innerHTML = '';
     
-    data.sensors.forEach(sensor => {
+    data.sensors.forEach((sensor, index) => {
+        const sensorId = `moisture_sensor_${index}`;
+        const sensorValveDiv = document.getElementById(sensorId);
+        sensorValveDiv.innerHTML = ''; // Clear existing content
+        
         const sensorDiv = document.createElement('div');
         sensorDiv.className = 'moisture-sensor-item';
         
@@ -296,10 +304,12 @@ function updateMoistureSensors(data) {
             </div>
         `;
         
-        container.appendChild(sensorDiv);
-        // Re-apply translations to new elements
-        setLanguage(currentLanguage);
+        //container.appendChild(sensorDiv);
+        sensorValveDiv.appendChild(sensorDiv);
     });
+
+    // Re-apply translations to new elements
+    setLanguage(currentLanguage);
 }
 
 function toggleOverlay(overlayName) {

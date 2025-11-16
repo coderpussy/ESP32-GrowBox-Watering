@@ -5,7 +5,7 @@
 
 void handleValveSwitch(uint8_t valveNum) {
     // Validate valve number
-    if (valveNum >= settings.plant_count) {
+    if (valveNum >= settings.plant_count || valveNum < 0) {
         logThrottled("Invalid valve number: %d", valveNum);
         return;
     }
