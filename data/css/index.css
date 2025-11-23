@@ -25,7 +25,12 @@ body {
 
 * {
     box-sizing: border-box;
-  }
+}
+
+section {
+    margin-bottom: 1em;
+    text-align: center;
+}
 
 h1 {
     font-size: 1.5em;
@@ -46,15 +51,9 @@ p {
     /*margin-bottom: 1.4em;*/
 }
 
-table {
-    text-align: left; 
-    vertical-align: middle; 
-    margin: 0 auto;
-}
-
 /* Automatic control CSS style definition */
 input[type=button] {
-    /*margin: 0 .25em;*/
+    margin: 0 .25em;
     padding: .4em .8em;
     font-size: 1em;
     color: #fff;
@@ -114,6 +113,9 @@ select {
     color: #0fc0c0;
     white-space: nowrap;
 }
+.topnav .box.clock {
+    color: #ffffff;
+}
 .topnav .box2 {
     display: flex;
     align-items: center;
@@ -155,10 +157,7 @@ div.formcontrols {
 }
 
 /* Overlay default CSS style definition */
-#overlay-calendar,
-#overlay-webserial,
-#overlay-settings,
-#overlay-wifi {
+[id^="overlay-"] {
     display: grid;
     place-items: center;
     position: fixed;
@@ -171,25 +170,18 @@ div.formcontrols {
     background: rgba(0,0,0,0.6);
     backdrop-filter: blur(4px);
     z-index: -1;
-
     transition: 0.6s;
     opacity: 0;
     visibility: hidden;
 }
-#overlay-calendar.active,
-#overlay-webserial.active,
-#overlay-settings.active,
-#overlay-wifi.active {
+[id^="overlay-"].active {
     opacity: 1;
     visibility: visible;
     z-index: 2;
     overflow-y: auto;
 }
 
-#overlay-calendar .close,
-#overlay-webserial .close,
-#overlay-settings .close,
-#overlay-wifi .close {
+[id^="overlay-"] .close {
     position: absolute;
     right: 36px;
     top: 24px;
@@ -198,20 +190,11 @@ div.formcontrols {
     opacity: 0.8;
     cursor: pointer;
 }
-#overlay-calendar .close:hover,
-#overlay-webserial .close:hover,
-#overlay-settings .close:hover,
-#overlay-wifi .close:hover {
+[id^="overlay-"] .close:hover {
     opacity: 1;
 }
-#overlay-calendar .close:before,
-#overlay-calendar .close:after,
-#overlay-webserial .close:before,
-#overlay-webserial .close:after,
-#overlay-settings .close:before,
-#overlay-settings .close:after,
-#overlay-wifi .close:before,
-#overlay-wifi .close:after {
+[id^="overlay-"] .close:before,
+[id^="overlay-"] .close:after {
     position: absolute;
     left: 15px;
     content: ' ';
@@ -219,43 +202,29 @@ div.formcontrols {
     width: 4px;
     background-color: #fff;
 }
-#overlay-calendar .close:before,
-#overlay-webserial .close:before,
-#overlay-settings .close:before,
-#overlay-wifi .close:before {
+[id^="overlay-"] .close:before {
     transform: rotate(45deg);
 }
-#overlay-calendar .close:after,
-#overlay-webserial .close:after,
-#overlay-settings .close:after,
-#overlay-wifi .close:after {
+[id^="overlay-"] .close:after {
     transform: rotate(-45deg);
 }
-#overlay-calendar .formcontrols,
-#overlay-webserial .formcontrols,
-#overlay-settings .formcontrols,
-#overlay-wifi .formcontrols {
+[id^="overlay-"] .formcontrols {
     padding: 20px;
+    flex-direction: column;
 }
 
-.auto-switch,
-.valve-switch,
-.pump-switch {
+[class*="-switch"] {
   display: inline-block;
   height: 34px;
   position: relative;
   width: 60px;
 }
 
-.auto-switch input,
-.valve-switch input,
-.pump-switch input {
+[class*="-switch"] input {
   display:none;
 }
 
-.auto-slider,
-.valve-slider,
-.pump-slider {
+[class*="-slider"] {
   background-color: #ccc;
   bottom: 0;
   cursor: pointer;
@@ -266,9 +235,7 @@ div.formcontrols {
   transition: .4s;
 }
 
-.auto-slider:before,
-.valve-slider:before,
-.pump-slider:before {
+[class*="-slider"]:before {
   background-color: #fff;
   bottom: 4px;
   content: "";
@@ -279,28 +246,19 @@ div.formcontrols {
   width: 26px;
 }
 
-
-input#auto_switch:checked + .auto-slider,
-input[id*="valve_switch_"]:checked + .valve-slider,
-input#pump_switch:checked + .pump-slider {
+input[id*="_switch"]:checked + [class*="-slider"] {
   background-color: #0fc0c0;
 }
 
-input#auto_switch:checked + .auto-slider:before,
-input[id*="valve_switch_"]:checked + .valve-slider:before,
-input#pump_switch:checked + .pump-slider:before {
+input[id*="_switch"]:checked + [class*="-slider"]:before {
   transform: translateX(26px);
 }
 
-.auto-slider.round,
-.valve-slider.round,
-.pump-slider.round {
+[class*="-slider"].round {
   border-radius: 34px;
 }
 
-.auto-slider.round:before,
-.valve-slider.round:before,
-.pump-slider.round:before {
+[class*="-slider"].round:before {
   border-radius: 50%;
 }
 
@@ -369,10 +327,4 @@ input[type="number"]#plant_count {
 #valve-controls .valve-control {
     min-width: 200px;
     text-align: center;
-}
-
-@media (max-width: 768px) {
-    #valve-controls {
-        flex-direction: column;
-    }
 }

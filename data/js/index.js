@@ -1,7 +1,9 @@
 // Import necessary modules
 import { setLanguage, currentLanguage } from "./language.js";
 import { scanNetworks, connectToWiFi, resetWiFi } from "./wifimanager.js";
+import { createValveControls, updateMoistureSensors } from "./hardware.js";
 import { setJobList, updatePlantSelect } from "./scheduler.js";
+import { initClock } from "./clock.js";
 
 // Initialization
 var gateway = `ws://${window.location.hostname}/ws`;
@@ -32,7 +34,8 @@ var language_select = document.getElementById("language-select");
 language_select.addEventListener("change", e => {
     setLanguage(e.target.value);
 });
-// Checkbox valve switches event listener
+
+// Checkbox switches event listener
 auto_switch.addEventListener('change', e => {
     websocket.send(JSON.stringify({"action":"auto_switch","auto_switch":e.target.checked}));
 });
@@ -40,6 +43,7 @@ pump_switch.addEventListener('change', e => {
     websocket.send(JSON.stringify({"action":"pump_switch","pump_switch":e.target.checked}));
 });
 
+// Plant count input event listener
 plantCountInput.addEventListener('change', e => {
     const count = parseInt(e.target.value);
     if (count >= 1 && count <= 8) {
@@ -47,39 +51,6 @@ plantCountInput.addEventListener('change', e => {
         updatePlantSelect(count);
     }
 });
-
-// Dynamic creation of valve controls
-function createValveControls(plantCount) {
-    const valveContainer = document.getElementById('valve-controls');
-    valveContainer.innerHTML = ''; // Clear existing controls
-    
-    for(let i = 0; i < plantCount; i++) {
-        const valveDiv = document.createElement('div');
-        valveDiv.className = 'valve-control';
-
-        valveDiv.innerHTML = `
-            <div id="moisture_sensor_${i}" class="moistureSensor" style="display:none;"></div>
-            <div>
-                <span data-translate="magnetic_valve_${i+1}">Magnetic Valve ${i+1}:</span>
-                <br /><br />
-                <span id="valve_${i}"></span>
-                <label class="valve-switch" for="valve_switch_${i}">
-                    <input type="checkbox" id="valve_switch_${i}" />
-                    <div class="valve-slider round"></div>
-                </label>
-            </div>
-        `;
-        valveContainer.appendChild(valveDiv);
-        
-        // Add event listener
-        document.getElementById(`valve_switch_${i}`).addEventListener('change', e => {
-            websocket.send(JSON.stringify({
-                "action": "valve_switch",
-                "valve_id": i  // Send 0-based index
-            }));
-        });
-    }
-}
 
 // Reset soil flow volume event listener
 const resetCounterBtn = document.getElementById("resetCounter");
@@ -89,7 +60,7 @@ resetCounterBtn.addEventListener('click', resetCounter);
 const saveSettingsBtn = document.getElementById("savesettings");
 saveSettingsBtn.addEventListener('click', saveSettings);
 
-
+// Initialize overlay toggle functionality
 function initToggleOverlay() {
     const overlaycalendar = document.querySelector('#overlay-calendar');
     const overlaywebserial = document.querySelector('#overlay-webserial');
@@ -120,6 +91,7 @@ function initToggleOverlay() {
     });
 }
 
+// Initialize WebSocket connection
 function initWebSocket() {
     console.log('Trying to open a WebSocket connection...');
     let retries = 0;
@@ -140,10 +112,12 @@ function initWebSocket() {
     connect();
 }
 
+// Event handlers
 function onload(event) {
     initWebSocket();
     initToggleOverlay();
     setLanguage(currentLanguage); // Set default language on load
+    initClock(); // Initialize clock display
 }
 
 function onOpen(event) {
@@ -224,10 +198,8 @@ function onMessage(event) {
             }
             // Show/hide moisture sensor settings based on use_moisturesensor
             if (use_moisturesensor.checked) {
-                document.querySelector("#moistureSensorsTitle").style.display = "block";
                 document.querySelectorAll(".moistureSensor").forEach(elem => elem.style.display = "flex");
             } else {
-                document.querySelector("#moistureSensorsTitle").style.display = "none";
                 document.querySelectorAll(".moistureSensor").forEach(elem => elem.style.display = "none");
             }
         } else if (action == "setjoblist") {
@@ -265,51 +237,6 @@ function saveSettings() {
         "plant_count": parseInt(plantCountInput.value)
     }));
     toggleOverlay("settings");
-}
-
-function updateMoistureSensors(data) {
-    //const container = document.getElementById('moisture-sensors-container');
-    //const card = document.getElementById('moisture-card');
-    
-    if (!data.enabled || data.count === 0) {
-        //card.style.display = 'none';
-        return;
-    }
-    
-    //card.style.display = 'flex';
-    //container.innerHTML = '';
-    
-    data.sensors.forEach((sensor, index) => {
-        const sensorId = `moisture_sensor_${index}`;
-        const sensorValveDiv = document.getElementById(sensorId);
-        sensorValveDiv.innerHTML = ''; // Clear existing content
-        
-        const sensorDiv = document.createElement('div');
-        sensorDiv.className = 'moisture-sensor-item';
-        
-        const statusClass = sensor.isDry ? 'dry' : 'ok';
-        const statusText = sensor.isDry ? 'DRY' : 'OK';
-        
-        sensorDiv.innerHTML = `
-            <div class="sensor-header">
-                <span class="sensor-label" data-translate="plant_">Plant</span> <span class="sensor-label">${sensor.id}</span>
-                <span class="sensor-status ${statusClass}" data-translate="${statusText}">${statusText}</span>
-            </div>
-            <div class="moisture-bar-container">
-                <div class="moisture-bar ${statusClass}" style="width: ${sensor.percent}%"></div>
-            </div>
-            <div class="sensor-details">
-                <span>${sensor.analog}/${sensor.percent}%</span>
-                <span class="sensor-pin">Pin ${sensor.pin}</span>
-            </div>
-        `;
-        
-        //container.appendChild(sensorDiv);
-        sensorValveDiv.appendChild(sensorDiv);
-    });
-
-    // Re-apply translations to new elements
-    setLanguage(currentLanguage);
 }
 
 function toggleOverlay(overlayName) {

@@ -1,11 +1,11 @@
 /* Moisture Sensor Styling */
-#moistureSensorsTitle {
-    text-align: center;
-}
-
 .moistureSensor {
     margin: 20px 0;
     justify-content: center;
+}
+
+.moisture-sensor-title {
+    margin-bottom: 1em;
 }
 
 .moisture-sensor-item {

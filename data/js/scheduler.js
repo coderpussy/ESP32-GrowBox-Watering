@@ -158,8 +158,8 @@ function addJob() {
     }
 
     if (jobselect == 0) { // If job type is time-based only
-        if (jobvolume === "" || jobduration === "") {
-            alert("Please enter volume and duration for the time-based job.");
+        if (jobvolume === "" && jobduration === "") {
+            alert("Please enter volume or duration for the time-based job.");
             return;
         }
         if (starttime === "") {
@@ -195,17 +195,41 @@ function addJob() {
                 activateBtn.innerText = "Activate";
                 jobItem.style.backgroundColor = "initial";
             }
+
+            // Set translated job selection text
+            let jobselectText = "";
+            switch(parseInt(jobselect)) {
+                case 0: jobselectText = "timebased"; break;
+                case 1: jobselectText = "moisturesensor"; break;
+                case 2: jobselectText = "time_moisture"; break;
+            }
+            // Set "--" to separated text variables in case of any of 
+            // jobvolume or jobduration or starttime or every day or moisture min or moisture max is empty
+            let jobvolumeText = jobvolume ? "" : "--";
+            let jobdurationText = jobduration ? "" : "--";
+            let starttimeText = starttime ? new Date(starttime).toLocaleString() : "--";
+            let everydayText = jobselect == 0 ? everyday ? "yes" : "no" : "--";
+            let moistureMinText = moistureMin ? "" : "--";
+            let moistureMaxText = moistureMax ? "" : "--";
+
             // Update job item details
             //jobItem.querySelector('.activate').innerText = "Activate";
             jobItem.querySelector('.itemjobname').innerText = jobname;
             jobItem.querySelector('.itemjobselect').innerText = jobselect;
+            jobItem.querySelector('.jobselecttext').setAttribute('data-translate', jobselectText);
             jobItem.querySelector('.itemmoisturemin').innerText = moistureMin;
+            jobItem.querySelector('.moisturemintext').innerText = moistureMinText;
             jobItem.querySelector('.itemmoisturemax').innerText = moistureMax;
+            jobItem.querySelector('.moisturemaxtext').innerText = moistureMaxText;
             jobItem.querySelector('.itemplantselect').innerText = plantselect;
             jobItem.querySelector('.itemjobvolume').innerText = jobvolume;
+            jobItem.querySelector('.jobvolumetext').innerText = jobvolumeText;
             jobItem.querySelector('.itemjobduration').innerText = jobduration;
+            jobItem.querySelector('.jobdurationtext').innerText = jobdurationText;
             jobItem.querySelector('.itemstarttime').innerText = starttime;
+            jobItem.querySelector('.starttimetext').innerText = starttimeText;
             jobItem.querySelector('.itemeveryday').innerText = everyday ? "true" : "false";
+            jobItem.querySelector('.everydaytext').setAttribute('data-translate', everydayText);
             // Clean up the data attribute
             delete addJobButton.dataset.previousState;
             // Reset form and edit state
@@ -239,14 +263,14 @@ function addJob() {
     jobItem.innerHTML = `
         <button class="activate">Activate</button>
         <p><span data-translate="job_name">Name:</span><span class="itemjobname">${jobname}</span></p>
-        <p><span data-translate="job_type">Job:</span><span><span class="itemjobselect">${jobselect}</span> - <span data-translate="${jobselectText}"></span></span></p>
-        <p><span data-translate="moisture_min">Moisture Min:</span><span><span class="itemmoisturemin">${moistureMin}</span><span>${moistureMinText}</span><span>%</span></span></p>
-        <p><span data-translate="moisture_max">Moisture Max:</span><span><span class="itemmoisturemax">${moistureMax}</span><span>${moistureMaxText}</span><span>%</span></span></p>
+        <p><span data-translate="job_type">Job:</span><span><span class="itemjobselect">${jobselect}</span> - <span class="jobselecttext" data-translate="${jobselectText}"></span></span></p>
+        <p><span data-translate="moisture_min">Moisture Min:</span><span><span class="itemmoisturemin">${moistureMin}</span><span class="moisturemintext">${moistureMinText}</span><span>%</span></span></p>
+        <p><span data-translate="moisture_max">Moisture Max:</span><span><span class="itemmoisturemax">${moistureMax}</span><span class="moisturemaxtext">${moistureMaxText}</span><span>%</span></span></p>
         <p><span data-translate="plant">Plant:</span><span class="itemplantselect">${plantselect}</span></p>
-        <p><span data-translate="volume">Volume:</span><span><span class="itemjobvolume">${jobvolume}</span><span>${jobvolumeText}</span><span>ml.</span></span></p>
-        <p><span data-translate="duration">Duration:</span><span><span class="itemjobduration">${jobduration}</span><span>${jobdurationText}</span><span>sec.</span></span></p>
-        <p><span data-translate="start_time">Start:</span><span><span class="itemstarttime">${starttime}</span><span>${starttimeText}</span></span></p>
-        <p><span data-translate="every_day_label">Every Day:</span><span><span class="itemeveryday">${everyday}</span><span data-translate="${everydayText}"></span></span></p>
+        <p><span data-translate="volume">Volume:</span><span><span class="itemjobvolume">${jobvolume}</span><span class="jobvolumetext">${jobvolumeText}</span><span>ml.</span></span></p>
+        <p><span data-translate="duration">Duration:</span><span><span class="itemjobduration">${jobduration}</span><span class="jobdurationtext">${jobdurationText}</span><span>sec.</span></span></p>
+        <p><span data-translate="start_time">Start:</span><span><span class="itemstarttime">${starttime}</span><span class="starttimetext">${starttimeText}</span></span></p>
+        <p><span data-translate="every_day_label">Every Day:</span><span><span class="itemeveryday">${everyday}</span><span class="everydaytext" data-translate="${everydayText}"></span></span></p>
         <p>
             <span class="itemedit" title="Edit Job">&#9998;</span>
             <span class="itemdelete" title="Delete Job">&#128465;</span>
@@ -301,14 +325,14 @@ function setJobList(data) {
         jobItem.innerHTML = `
             <button class="activate">${job.active ? "Active" : "Activate"}</button>
             <p><span data-translate="job_name">Name:</span><span class="itemjobname">${job.name}</span></p>
-            <p><span data-translate="job_type">Job:</span><span><span class="itemjobselect">${job.type}</span> - <span data-translate="${jobTypeText}"></span></span></p>
-            <p><span data-translate="moisture_min">Moisture Min:</span><span><span class="itemmoisturemin">${job.moisture_min}</span><span>${moistureMinText}</span><span>%</span></span></p>
-            <p><span data-translate="moisture_max">Moisture Max:</span><span><span class="itemmoisturemax">${job.moisture_max}</span><span>${moistureMaxText}</span><span>%</span></span></p>
+            <p><span data-translate="job_type">Job:</span><span><span class="itemjobselect">${job.type}</span> - <span class="jobselecttext" data-translate="${jobTypeText}"></span></span></p>
+            <p><span data-translate="moisture_min">Moisture Min:</span><span><span class="itemmoisturemin">${job.moisture_min}</span><span class="moisturemintext">${moistureMinText}</span><span>%</span></span></p>
+            <p><span data-translate="moisture_max">Moisture Max:</span><span><span class="itemmoisturemax">${job.moisture_max}</span><span class="moisturemaxtext">${moistureMaxText}</span><span>%</span></span></p>
             <p><span data-translate="plant">Plant:</span><span class="itemplantselect">${job.plant}</span></p>
-            <p><span data-translate="volume">Volume:</span><span><span class="itemjobvolume">${job.volume}</span><span>${jobvolumeText}</span><span>ml.</span></span></p>
-            <p><span data-translate="duration">Duration:</span><span><span class="itemjobduration">${job.duration}</span><span>${jobdurationText}</span><span>sec.</span></span></p>
-            <p><span data-translate="start_time">Start:</span><span><span class="itemstarttime">${job.starttime}</span><span>${starttimeText}</span></span></p>
-            <p><span data-translate="every_day_label">Every Day:</span><span><span class="itemeveryday">${job.everyday}</span><span data-translate="${everydayText}"></span></span></p>
+            <p><span data-translate="volume">Volume:</span><span><span class="itemjobvolume">${job.volume}</span><span class="jobvolumetext">${jobvolumeText}</span><span>ml.</span></span></p>
+            <p><span data-translate="duration">Duration:</span><span><span class="itemjobduration">${job.duration}</span><span class="jobdurationtext">${jobdurationText}</span><span>sec.</span></span></p>
+            <p><span data-translate="start_time">Start:</span><span><span class="itemstarttime">${job.starttime}</span><span class="starttimetext">${starttimeText}</span></span></p>
+            <p><span data-translate="every_day_label">Every Day:</span><span><span class="itemeveryday">${job.everyday}</span><span class="everydaytext" data-translate="${everydayText}"></span></span></p>
             <p>
                 <span class="itemedit" title="Edit Job">&#9998;</span>
                 <span class="itemdelete" title="Delete Job">&#128465;</span>

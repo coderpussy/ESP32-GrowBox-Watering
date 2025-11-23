@@ -220,7 +220,7 @@ void jobsProcessor() {
 
             // Process the job
             processJob(job);
-            lastExecutedJobId = job.id;
+            lastExecutedJobId = job.id; // TODO: Refactor to decide how to handle time intervals of same job on same day
             lastJobStartTime = now;
             break;
         }

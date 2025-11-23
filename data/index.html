@@ -7,102 +7,88 @@
         <link rel="icon" type="image/x-icon" href="favicon.ico">
         <link rel="stylesheet" type="text/css" href="css/index.css">
     </head>
-
     <body>
         <input id="dark-mode" class="dark-mode-checkbox visually-hidden" type="checkbox" />
-
-        <div class="topnav">
-            <div class="box box1">
-                <div data-translate="title">Growbox Watering</div>
-            </div>
-            <div class="box box2">
-                <div class="wifi-icon toggle-overlay wifi"></div>
-                <div class="calendar-dates toggle-overlay calendar"></div>
-                <div class="power-plug toggle-overlay webserial"></div>
-                <div class="gear toggle-overlay settings">
-                    <div class="bar"></div>
-                    <div class="bar"></div>
-                    <div class="bar"></div>
-                    <div class="gear-inner"></div>
+        <header>
+            <nav class="topnav">
+                <div class="box box1">
+                    <div data-translate="title">Growbox Watering</div>
                 </div>
-                <div>
-                    <label class="dark-mode-label" for="dark-mode">
-                        <span class="toggle">
-                            <span class="circle"></span>
-                        </span>
-                    </label>
-                </div>
-                <div class="custom-select">
-                    <select id="language-select">
-                        <option value="en">English</option>
-                        <option value="de">Deutsch</option>
-                    </select>
-                </div>
-            </div>
-        </div>
-
-        <div class="theme-container">
-
-            <table>
-                <tr>
-                    <td style="text-align: center;">
-                        <span data-translate="automatic_watering">Automatic Watering:</span><br /><br />
-                        <span id="mode"></span>
-                        <label class="auto-switch" for="auto_switch">
-                            <input type="checkbox" id="auto_switch" />
-                            <div class="auto-slider round"></div>
+                <div class="box clock"></div>
+                <div class="box box2">
+                    <div class="wifi-icon toggle-overlay wifi"></div>
+                    <div class="calendar-dates toggle-overlay calendar"></div>
+                    <div class="power-plug toggle-overlay webserial"></div>
+                    <div class="gear toggle-overlay settings">
+                        <div class="bar"></div>
+                        <div class="bar"></div>
+                        <div class="bar"></div>
+                        <div class="gear-inner"></div>
+                    </div>
+                    <div>
+                        <label class="dark-mode-label" for="dark-mode">
+                            <span class="toggle">
+                                <span class="circle"></span>
+                            </span>
                         </label>
-                    </td>
-                </tr>
-            </table>
+                    </div>
+                    <div class="custom-select">
+                        <select id="language-select">
+                            <option value="en">English</option>
+                            <option value="de">Deutsch</option>
+                        </select>
+                    </div>
+                </div>
+            </nav>
+        </header>
+        
+        <main class="theme-container">
+            <section>
+                <span data-translate="automatic_watering">Automatic Watering:</span><br /><br />
+                <span id="mode"></span>
+                <label class="auto-switch" for="auto_switch">
+                    <input type="checkbox" id="auto_switch" />
+                    <div class="auto-slider round"></div>
+                </label>
+            </section>
 
-            <br />
+            <section>
+                <div id="valve-controls">
+                    <!-- Valve controls together with moisture sensors will be inserted here dynamically -->
+                </div>
+            </section>
 
-            <div id="moistureSensorsTitle" data-translate="moisture_sensors" style="display: none;">Moisture Sensors</div>
+            <section>
+                <span data-translate="water_pump">Water Pump:</span><br /><br />
+                <span id="pump_1"></span>
+                <label class="pump-switch" for="pump_switch">
+                    <input type="checkbox" id="pump_switch" />
+                    <div class="pump-slider round"></div>
+                </label>
+            </section>
 
-            <div id="valve-controls">
-                <!-- Valve controls together with moisture sensors will be inserted here dynamically -->
-            </div>
-
-            <br />
-
-            <table>
-                <tr>
-                    <td style="text-align: center;">
-                        <span data-translate="water_pump">Water Pump:</span><br /><br />
-                        <span id="pump_1"></span>
-                        <label class="pump-switch" for="pump_switch">
-                            <input type="checkbox" id="pump_switch" />
-                            <div class="pump-slider round"></div>
-                        </label>
-                    </td>
-                </tr>
-            </table>
-
-            <br />
-
-            <table>
-                <tr>
-                    <td style="text-align: left;">
+            <article>
+                <section>
+                    <span>
                         <span data-translate="runs">Runs:</span>
                         <span><span id="pumpRunTime"></span> <span data-translate="seconds">sec.</span></span>
-                    </td>
-                    <td>
-                        <div id="soilFlowVolumeWrapper">
+                    </span>
+                    <span>
+                        <span id="soilFlowVolumeWrapper">
                             <span data-translate="soil_flow_rate">Soil Flow Rate:</span>
                             <span><span id="soilFlowVolume"></span> <span data-translate="millilitres">ml.</span></span>
-                        </div>
-                    </td>
-                </tr>
-                <tr>
-                    <td colspan="2" style="padding-top: 10px; text-align: center;">
+                        </span>
+                    </span>
+                </section>
+                <section>
+                    <p style="padding-top: 10px; text-align: center;">
                         <input id="resetCounter" type="button" class="button" data-translate="reset_counter" value="Reset Counter">
-                    </td>
-                </tr>
-            </table>
+                    </p>
+                </section>
+            </article>
 
             <!-- Modal overlay calendar -->
-            <div id="overlay-calendar">
+            <article id="overlay-calendar">
                 <span class="close toggle-overlay calendar"></span>
                 <div class="content">
                     <h1 data-translate="job_scheduler">Job Scheduler</h1>
@@ -151,20 +137,20 @@
                         </div>
                     </div>
                 </div>
-            </div>
+            </article>
 
             <!-- Modal overlay Webserial -->
-            <div id="overlay-webserial">
+            <article id="overlay-webserial">
                 <span class="close toggle-overlay webserial"></span>
                 <div class="content">
                     <div class="formcontrols">
                         <iframe width="600" height="400" src="/webserial"></iframe>
                     </div>
                 </div>
-            </div>
+            </article>
 
             <!-- Modal overlay Settings -->
-            <div id="overlay-settings">
+            <article id="overlay-settings">
                 <span class="close toggle-overlay settings"></span>
                 <div class="content">
                     <h1 data-translate="settings">Settings</h1>
@@ -183,10 +169,10 @@
                         </p>
                     </div>
                 </div>
-            </div>
+            </article>
 
             <!-- Overlay WiFi Manager -->
-            <div id="overlay-wifi">
+            <article id="overlay-wifi">
                 <span class="close toggle-overlay wifi"></span>
                 <div class="content overlay-content wifi-manager-content">
                     <h1 data-translate="wifi_manager_title">WiFi Configuration</h1>
@@ -217,9 +203,8 @@
                         </div>
                     </div>
                 </div>
-            </div>
-
-        </div>
+            </article>
+        </main>
         <script src="js/index.js" type="module"></script>
     </body>
 </html>
