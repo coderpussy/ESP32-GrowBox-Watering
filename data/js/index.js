@@ -1,9 +1,33 @@
 // Import necessary modules
-import { setLanguage, currentLanguage } from "./language.js";
-import { scanNetworks, connectToWiFi, resetWiFi } from "./wifimanager.js";
-import { createValveControls, updateMoistureSensors } from "./hardware.js";
-import { setJobList, updatePlantSelect } from "./scheduler.js";
-import { initClock } from "./clock.js";
+// Language management
+import {
+    setLanguage,
+    currentLanguage
+} from "./language.js";
+
+// Network management
+import {
+    scanNetworks,
+    connectToWiFi,
+    resetWiFi
+} from "./wifimanager.js";
+
+// Hardware controls
+import {
+    createValveControls,
+    updateMoistureSensors
+} from "./hardware.js";
+
+// Scheduling
+import {
+    setJobList,
+    updatePlantSelect
+} from "./scheduler.js";
+
+// Clock display
+import {
+    initClock
+} from "./clock.js";
 
 // Initialization
 var gateway = `ws://${window.location.hostname}/ws`;

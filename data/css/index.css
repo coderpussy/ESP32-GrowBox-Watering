@@ -84,7 +84,7 @@ select {
     width: 100%;
     overflow: hidden;
     padding: 1em;
-    background-color: #0A1128;
+    background-color: #102526;
     z-index: 1;
 }
 @media (max-width: 600px) {
@@ -115,25 +115,14 @@ select {
 }
 .topnav .box.clock {
     color: #ffffff;
+    font-size: .75em;
 }
 .topnav .box2 {
     display: flex;
     align-items: center;
     justify-content: right;
 }
-.topnav .box2 > div:nth-child(1) {
-    margin-right: 1.5em;
-}
-.topnav .box2 > div:nth-child(2) {
-    margin-right: 1.5em;
-}
-.topnav .box2 > div:nth-child(3) {
-    margin-right: 1.5em;
-}
-.topnav .box2 > div:nth-child(4) {
-    margin-right: 1.5em;
-}
-.topnav .box2 > div:nth-child(5) {
+.topnav .box2 > div:not(:last-child) {
     margin-right: 1.5em;
 }
 
@@ -327,4 +316,14 @@ input[type="number"]#plant_count {
 #valve-controls .valve-control {
     min-width: 200px;
     text-align: center;
+}
+
+.footer {
+    text-align: center;
+    background-color: #102526;
+    color: #ffffff;
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    font-size: 0.75em;
 }
